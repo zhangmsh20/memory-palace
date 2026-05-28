@@ -1,0 +1,65 @@
+/* ══════════════════════════════════════
+   transitions.css — 层间过渡系统
+   ══════════════════════════════════════ */
+
+/* 遮罩层 */
+#dive-veil {
+  position: fixed; inset: 0; z-index: 500;
+  pointer-events: none; background: var(--void);
+  opacity: 0; will-change: opacity;
+}
+#dive-color {
+  position: fixed; inset: 0; z-index: 499;
+  pointer-events: none; opacity: 0; will-change: opacity; transition: background .3s;
+}
+#pressure-bar {
+  position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 600;
+  pointer-events: none; overflow: hidden; opacity: 0;
+}
+#pressure-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, transparent, var(--dive-accent, rgba(80,220,180,.9)), transparent);
+}
+
+/* 水压涟漪 */
+.veil-ripple {
+  position: fixed; border-radius: 50%;
+  border: 1px solid var(--ripple-col, rgba(80,220,180,0.5));
+  pointer-events: none; z-index: 498;
+  animation: rippleExpand var(--rd,.9s) ease-out forwards;
+}
+@keyframes rippleExpand {
+  0%   { opacity: 0.6; transform: translate(-50%,-50%) scale(0); }
+  100% { opacity: 0;   transform: translate(-50%,-50%) scale(1); }
+}
+
+/* 全黑过场 */
+#depth-transition {
+  position: fixed; inset: 0; z-index: 700;
+  pointer-events: none;
+  background: var(--void); opacity: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+#depth-transition.active { pointer-events: all; }
+#dt-ripple {
+  position: absolute; left: 50%; top: 50%;
+  width: 0; height: 0; border-radius: 50%;
+  transform: translate(-50%,-50%); pointer-events: none;
+}
+#dt-text {
+  position: relative; z-index: 2; text-align: center;
+  opacity: 0; transform: translateY(12px);
+  transition: opacity .4s ease, transform .4s ease;
+}
+#depth-transition.show-text #dt-text { opacity: 1; transform: translateY(0); }
+#dt-direction {
+  font-family: var(--font-m); font-size: 11px; letter-spacing: .28em;
+  text-transform: uppercase; margin-bottom: 20px; opacity: 0.35;
+}
+#dt-zone-name {
+  font-size: clamp(48px,7vw,80px); font-weight: 800;
+  font-family: var(--font-d); color: rgba(255,255,255,0.92);
+  letter-spacing: -.02em; line-height: 1; margin-bottom: 16px;
+}
+#dt-tagline  { font-size: 16px; color: rgba(255,255,255,0.35); letter-spacing: .06em; margin-bottom: 24px; font-family: var(--font-b); }
+#dt-depth-num{ font-family: var(--font-m); font-size: 12px; letter-spacing: .2em; opacity: 0.2; }

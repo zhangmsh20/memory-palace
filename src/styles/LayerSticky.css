@@ -1,0 +1,184 @@
+/* ══════════════════════════════════════
+   LayerSticky.css — 便利贴短期记忆层
+   ══════════════════════════════════════ */
+
+#layer-sticky {
+  background: radial-gradient(ellipse 120% 80% at 50% 30%, rgba(10,30,80,0.5) 0%, #040820 60%, var(--abyss) 100%);
+}
+
+/* 便利贴板 */
+.sticky-board { position: absolute; inset: 0; }
+
+/* 便利贴主体 */
+.sticky-note {
+  position: absolute; width: 168px;
+  background: var(--paper); border-radius: 1px;
+  padding: 14px 12px 22px; cursor: grab;
+  box-shadow: 3px 6px 20px rgba(0,0,0,0.6), inset 0 -1px 0 rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.1);
+  font-family: var(--font-h); font-size: 14px; line-height: 1.55; color: #1e1508;
+  user-select: none; touch-action: none; -webkit-user-drag: none;
+  transition: box-shadow .2s, filter .2s; z-index: 10;
+}
+.sticky-note:active { cursor: grabbing; }
+.sticky-note::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; border-radius: 1px 1px 0 0;
+}
+
+/* 标签色带 */
+.sticky-note.c-green::before  { background: var(--tag-know); }
+.sticky-note.c-orange::before { background: var(--tag-life); }
+.sticky-note.c-purple::before { background: var(--tag-id);   }
+.sticky-note.c-blue::before   { background: var(--tag-work); }
+.sticky-note.c-red::before    { background: var(--tag-rel);  }
+.sticky-note.c-yellow::before { background: var(--tag-emo);  }
+
+/* 标签徽章 */
+.s-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--font-m); font-size: 10px; letter-spacing: .06em;
+  padding: 3px 8px; border-radius: 4px; margin-bottom: 8px; font-style: normal;
+}
+.sticky-note.c-green  .s-badge { background: rgba(67,217,160,0.15);  color: var(--tag-know); }
+.sticky-note.c-orange .s-badge { background: rgba(255,159,67,0.15);  color: var(--tag-life); }
+.sticky-note.c-purple .s-badge { background: rgba(155,107,255,0.15); color: var(--tag-id);   }
+.sticky-note.c-blue   .s-badge { background: rgba(74,158,255,0.15);  color: var(--tag-work); }
+.sticky-note.c-red    .s-badge { background: rgba(255,107,107,0.15); color: var(--tag-rel);  }
+.sticky-note.c-yellow .s-badge { background: rgba(255,217,61,0.15);  color: var(--tag-emo);  }
+
+.s-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.sticky-note.c-green  .s-dot { background: var(--tag-know); }
+.sticky-note.c-orange .s-dot { background: var(--tag-life); }
+.sticky-note.c-purple .s-dot { background: var(--tag-id);   }
+.sticky-note.c-blue   .s-dot { background: var(--tag-work); }
+.sticky-note.c-red    .s-dot { background: var(--tag-rel);  }
+.sticky-note.c-yellow .s-dot { background: var(--tag-emo);  }
+
+.s-time {
+  position: absolute; bottom: 7px; right: 10px;
+  font-family: var(--font-m); font-size: 9px; opacity: 0.35; color: #2a1a08;
+}
+.s-pin {
+  position: absolute; top: -9px; left: 50%; transform: translateX(-50%);
+  width: 12px; height: 12px; border-radius: 50%;
+  background: rgba(0,0,0,0.25); box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+/* 衰减状态 */
+.sticky-note.decay-fresh    { filter: saturate(1) brightness(1); }
+.sticky-note.decay-cooling  { filter: saturate(0.7) brightness(0.9); }
+.sticky-note.decay-fading   { filter: saturate(0.35) brightness(0.75); }
+.sticky-note.decay-critical { filter: saturate(0.1) brightness(0.6); animation: criticalPulse 3s ease-in-out infinite !important; }
+@keyframes criticalPulse {
+  0%,100% { filter: saturate(0.1) brightness(0.6); opacity: 0.7; }
+  50%     { filter: saturate(0.25) brightness(0.75); opacity: 1; }
+}
+
+/* 拖拽中 */
+.sticky-note.dragging {
+  cursor: grabbing; z-index: 500;
+  box-shadow: 6px 12px 40px rgba(0,0,0,0.8), 0 0 20px rgba(80,220,180,0.2);
+  filter: brightness(1.1) !important;
+}
+
+/* 危险区 */
+@keyframes dangerPulse {
+  0%,100% { box-shadow: 3px 6px 20px rgba(0,0,0,0.6), 0 0 0 2px rgba(255,80,80,0.4),  0 0 20px rgba(255,60,60,0.3); }
+  50%     { box-shadow: 3px 6px 20px rgba(0,0,0,0.6), 0 0 0 3px rgba(255,80,80,0.9),  0 0 40px rgba(255,60,60,0.6); }
+}
+.sticky-note.danger-zone { animation: dangerPulse .6s ease-in-out infinite !important; }
+
+/* 顶部销毁区 */
+#dissolve-zone {
+  position: absolute; top: 0; left: 0; right: 0; height: 22%;
+  pointer-events: none; z-index: 6; opacity: 0; transition: opacity .25s;
+}
+#dissolve-zone.visible { opacity: 1; }
+#dissolve-zone::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg,transparent 0%,rgba(255,80,80,0.0) 5%,rgba(255,80,80,0.7) 20%,rgba(255,100,80,1) 50%,rgba(255,80,80,0.7) 80%,rgba(255,80,80,0.0) 95%,transparent 100%);
+  box-shadow: 0 0 12px rgba(255,60,60,0.6), 0 0 30px rgba(255,60,60,0.3);
+}
+#dissolve-zone::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg,rgba(255,40,40,0.08) 0%,transparent 100%);
+}
+#dissolve-zone-label {
+  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+  font-family: var(--font-m); font-size: 10px; letter-spacing: .2em;
+  color: rgba(255,100,80,0.9); text-transform: uppercase; white-space: nowrap;
+  text-shadow: 0 0 12px rgba(255,60,60,0.8);
+}
+
+/* 书架拖入区 */
+#shelf-drop-zone {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 120px;
+  background: linear-gradient(0deg,rgba(255,180,80,0.08) 0%,transparent 100%);
+  border-top: 1px dashed rgba(255,180,80,0.15);
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none; opacity: 0; transition: opacity .3s; z-index: 5;
+}
+#shelf-drop-zone.visible { opacity: 1; }
+#shelf-drop-zone.hot {
+  background: linear-gradient(0deg,rgba(255,180,80,0.2) 0%,transparent 100%);
+  border-color: rgba(255,180,80,0.5);
+}
+.sdz-label { font-family: var(--font-m); font-size: 11px; letter-spacing: .15em; color: rgba(255,180,80,0.6); text-transform: uppercase; }
+
+/* 衰减图例 */
+.decay-legend {
+  position: absolute; top: 68px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 16px; z-index: 20;
+  background: rgba(4,4,18,0.78); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 30px; padding: 7px 18px; backdrop-filter: blur(16px);
+  white-space: nowrap; pointer-events: none;
+}
+.dl-legend-title { font-family: var(--font-m); font-size: 9px; letter-spacing: .2em; color: rgba(255,255,255,0.2); text-transform: uppercase; }
+.dl-row { display: flex; align-items: center; gap: 6px; font-family: var(--font-m); font-size: 10px; letter-spacing: .04em; color: rgba(255,255,255,0.5); }
+.dl-swatch { width: 14px; height: 9px; border-radius: 2px; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.08); }
+.dl-swatch.s-fresh    { background: #e8d8a0; box-shadow: 0 0 5px rgba(80,220,180,0.5); }
+.dl-swatch.s-cooling  { background: #b8a870; }
+.dl-swatch.s-fading   { background: #6e6040; }
+.dl-swatch.s-critical { background: #3a3020; border-color: rgba(255,80,80,0.3); }
+.dl-sep { width: 1px; height: 12px; background: rgba(255,255,255,0.08); flex-shrink: 0; }
+
+/* 输入区 */
+.sticky-input-wrap {
+  position: absolute; bottom: 36px; left: 50%; transform: translateX(-50%);
+  width: min(500px,85vw); z-index: 30;
+}
+.sticky-input-box {
+  display: flex; align-items: center; gap: 0;
+  background: rgba(8,8,30,0.85);
+  border: 1px solid rgba(80,200,255,0.2);
+  border-radius: 12px; backdrop-filter: blur(16px);
+  padding: 12px 16px; transition: border-color .3s, box-shadow .3s;
+}
+.sticky-input-box:focus-within {
+  border-color: rgba(80,200,255,0.5);
+  box-shadow: 0 0 0 3px rgba(80,200,255,0.07), 0 8px 32px rgba(0,0,0,0.4);
+}
+.sib-pulse {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--tag-know);
+  margin-right: 12px; flex-shrink: 0;
+  animation: aipulse 2s ease-in-out infinite;
+}
+@keyframes aipulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.4; transform:scale(.7); } }
+.sib-input {
+  flex: 1; background: transparent; border: none; outline: none;
+  font-family: var(--font-m); font-size: 12px; letter-spacing: .04em; color: rgba(255,255,255,0.7);
+}
+.sib-input::placeholder { color: rgba(255,255,255,0.2); }
+.sib-send {
+  font-family: var(--font-m); font-size: 10px; letter-spacing: .12em;
+  color: rgba(80,200,255,0.8); cursor: pointer; padding: 6px 14px;
+  clip-path: polygon(6px 0%,100% 0%,100% calc(100% - 6px),calc(100% - 6px) 100%,0% 100%,0% 6px);
+  border: 1px solid rgba(80,200,255,0.3);
+  background: rgba(80,200,255,0.05); transition: all .2s;
+  flex-shrink: 0; position: relative; overflow: hidden;
+}
+.sib-send::before {
+  content: ''; position: absolute; top: -100%; left: 0; right: 0; height: 100%;
+  background: linear-gradient(180deg,transparent,rgba(80,200,255,0.08),transparent);
+  animation: pillScan 2s linear infinite; pointer-events: none;
+}
+.sib-send:hover { color: rgba(80,200,255,1); border-color: rgba(80,200,255,0.7); background: rgba(80,200,255,0.1); box-shadow: 0 0 14px rgba(80,200,255,0.2); }

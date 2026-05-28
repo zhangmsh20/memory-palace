@@ -1,0 +1,49 @@
+/* ══════════════════════════════════════
+   variables.css — 设计系统全部 token
+   ══════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* 深渊色阶 */
+  --void:    #02020a;
+  --abyss:   #030310;
+  --midnight:#050518;
+  --deep:    #080825;
+  --twilight:#0d1035;
+  --surface: #101040;
+  --surface2:#161655;
+
+  /* 发光系统 */
+  --glow-w:       rgba(255,255,255,0.9);
+  --glow-a:       rgba(130,100,255,0.8);
+  --glow-warm:    rgba(255,180,80,0.7);
+  --glow-fresh:   rgba(80,220,180,0.7);
+  --glow-bio:     rgba(60,200,255,0.6);
+  --glow-abyssal: rgba(100,60,255,0.5);
+
+  /* 材质 */
+  --paper:  #f0e8d0;
+  --leather:#2a1f14;
+  --gold:   #c9a84c;
+
+  /* 标签色系 */
+  --tag-id:  #9b6bff;
+  --tag-work:#4a9eff;
+  --tag-know:#43d9a0;
+  --tag-life:#ff9f43;
+  --tag-rel: #ff6b6b;
+  --tag-emo: #ffd93d;
+
+  /* 字体 */
+  --font-d: 'Syne', sans-serif;
+  --font-m: 'Syne Mono', monospace;
+  --font-b: 'DM Sans', sans-serif;
+  --font-h: 'Caveat', cursive;
+
+  /* 层级 accent（过渡动画用）— layer2 偏暖琥珀，layer3 偏冷深紫 */
+  --layer0-accent: rgba(80,200,255,0.9);
+  --layer1-accent: rgba(80,220,180,0.9);
+  --layer2-accent: rgba(255,150,50,0.9);
+  --layer3-accent: rgba(110,70,255,0.9);
+  --layer4-accent: rgba(200,140,255,0.9);
+}

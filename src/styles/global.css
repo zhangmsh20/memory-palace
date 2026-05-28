@@ -1,0 +1,219 @@
+/* ══════════════════════════════════════
+   global.css — 全局基础 & 通用元素
+   ══════════════════════════════════════ */
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--void);
+  color: #e8e8f2;
+  font-family: var(--font-b);
+  cursor: none;
+}
+
+/* ── CURSOR ── */
+#cur {
+  position: fixed; width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(80,220,180,0.9); pointer-events: none; z-index: 9999;
+  transform: translate(-50%,-50%);
+  transition: width .15s, height .15s;
+  mix-blend-mode: screen;
+}
+#cur-ring {
+  position: fixed; width: 28px; height: 28px; border-radius: 50%;
+  border: 1px solid rgba(80,220,180,0.3); pointer-events: none; z-index: 9998;
+  transform: translate(-50%,-50%);
+  transition: width .25s, height .25s, border-color .25s;
+}
+
+/* ── OCEAN SCROLL CONTAINER ── */
+#ocean {
+  position: fixed; inset: 0;
+  overflow-y: hidden; overflow-x: hidden;
+  scrollbar-width: none;
+  touch-action: none; /* 完全由 JS 接管，禁止原生触摸滚动抢跑 */
+}
+#ocean::-webkit-scrollbar { display: none; }
+
+/* ── SECTION BASE ── */
+.layer {
+  position: relative; width: 100%; height: 100vh;
+  /* scroll-snap-align 移除，导航完全由 DiveTransition.go() 控制 */
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+
+/* 层边缘光 */
+.layer::after {
+  content: ''; position: absolute; inset: 0;
+  pointer-events: none; z-index: 1;
+  opacity: 0; transition: opacity 1.2s ease;
+}
+.layer.entering::after { opacity: 1; }
+#layer-intro::after   { background: radial-gradient(ellipse 120% 60% at 50% 0%,   rgba(10,60,120,0.15),  transparent 70%); }
+#layer-sticky::after  { background: radial-gradient(ellipse 100% 40% at 50% 0%,   rgba(2,20,60,0.2),     transparent 60%); }
+#layer-shelf::after   { background: radial-gradient(ellipse 100% 50% at 50% 100%, rgba(30,15,5,0.25),    transparent 70%); }
+#layer-library::after { background: radial-gradient(ellipse 80%  80% at 50% 50%,  rgba(10,5,30,0.3),     transparent 80%); }
+
+/* ── LOGO ── */
+#logo {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  padding: 20px 36px; display: flex; align-items: center;
+  pointer-events: none;
+}
+.logo-text {
+  font-family: var(--font-d); font-size: 12px; font-weight: 700;
+  letter-spacing: .18em; color: rgba(255,255,255,0.4);
+  pointer-events: all; cursor: pointer; transition: color .3s;
+}
+.logo-text:hover { color: rgba(255,255,255,0.8); }
+.logo-ver {
+  font-family: var(--font-m); font-size: 9px;
+  color: var(--tag-know); margin-left: 8px; letter-spacing: .06em; opacity: 0.6;
+}
+
+/* ── DEPTH GAUGE (右侧导航) ── */
+#depth-gauge {
+  position: fixed; right: 32px; top: 50%; transform: translateY(-50%);
+  z-index: 200; display: flex; flex-direction: column; align-items: center; gap: 0;
+}
+.gauge-line {
+  width: 1px; height: 48px;
+  background: linear-gradient(180deg,rgba(80,220,180,0.05),rgba(80,220,180,0.2),rgba(80,220,180,0.05));
+}
+.gauge-stop {
+  position: relative; width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.gauge-stop::after {
+  content: ''; position: absolute; width: 22px; height: 22px; border-radius: 50%;
+  border: 1px solid rgba(80,220,180,0.12); transition: all .4s;
+}
+.gauge-stop::before {
+  content: ''; width: 9px; height: 9px; border-radius: 50%;
+  background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.2);
+  transition: all .35s; position: relative; z-index: 1;
+}
+.gauge-stop.active::before {
+  background: var(--tag-know); border-color: var(--tag-know);
+  box-shadow: 0 0 14px var(--tag-know), 0 0 28px rgba(80,220,180,0.4);
+  width: 11px; height: 11px;
+  animation: gaugeBreath 2.4s ease-in-out infinite;
+}
+.gauge-stop.active::after {
+  border-color: rgba(80,220,180,0.35);
+  animation: gaugeRingBreath 2.4s ease-in-out infinite;
+}
+@keyframes gaugeBreath {
+  0%,100% { box-shadow: 0 0 14px var(--tag-know),0 0 28px rgba(80,220,180,0.4); transform: scale(1); }
+  50%     { box-shadow: 0 0 22px var(--tag-know),0 0 44px rgba(80,220,180,0.6); transform: scale(1.18); }
+}
+@keyframes gaugeRingBreath {
+  0%,100% { transform: scale(1);   opacity: 0.4; }
+  50%     { transform: scale(1.3); opacity: 0.8; }
+}
+.gauge-label {
+  position: absolute; right: 32px;
+  font-family: var(--font-m); font-size: 11px; letter-spacing: .08em;
+  color: rgba(255,255,255,0.22); white-space: nowrap;
+  transition: color .3s, opacity .3s, transform .3s;
+  opacity: 0; pointer-events: none; transform: translateX(4px);
+}
+.gauge-stop:hover .gauge-label { opacity: 1; color: rgba(255,255,255,0.55); transform: translateX(0); }
+.gauge-stop.active .gauge-label { opacity: 0; }
+
+/* ── SCROLL HINT ── */
+#scroll-hint {
+  position: fixed; bottom: 28px; right: 56px; z-index: 200;
+  font-family: var(--font-m); font-size: 9px; letter-spacing: .15em;
+  color: rgba(255,255,255,0.2);
+  display: flex; align-items: center; gap: 6px;
+  pointer-events: none; text-transform: uppercase;
+}
+.sh-arrow { animation: arrBob 2s ease-in-out infinite; }
+@keyframes arrBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+
+/* ── BACKGROUND PARTICLES ── */
+#particles { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+.par {
+  position: absolute; border-radius: 50%; background: #fff;
+  animation: parTwinkle var(--d,5s) var(--del,0s) ease-in-out infinite alternate;
+}
+@keyframes parTwinkle { 0% { opacity: var(--o1,.05); } 100% { opacity: var(--o2,.4); } }
+
+/* 水层过渡粒子 */
+.water-mote {
+  position: absolute; border-radius: 50%;
+  background: rgba(80,180,255,0.3); pointer-events: none;
+  animation: moteRise var(--d,12s) var(--del,0s) ease-in-out infinite;
+}
+@keyframes moteRise {
+  0%   { transform: translateY(0) translateX(0); opacity: 0; }
+  10%  { opacity: var(--o,.4); }
+  90%  { opacity: var(--o,.2); }
+  100% { transform: translateY(-120px) translateX(var(--tx,8px)); opacity: 0; }
+}
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%);
+  background: rgba(8,8,30,0.9);
+  border: 1px solid rgba(80,220,180,0.35);
+  border-radius: 8px; padding: 9px 20px;
+  font-family: var(--font-m); font-size: 11px; letter-spacing: .08em;
+  color: var(--tag-know); z-index: 9000;
+  animation: toastIn .3s ease; pointer-events: none;
+  backdrop-filter: blur(12px);
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── 火粒子 ── */
+.fire-p {
+  position: fixed; border-radius: 50%; pointer-events: none;
+  animation: fireUp .85s ease-out forwards;
+}
+@keyframes fireUp {
+  0%   { opacity: 0.9; transform: translate(0,0) scale(1); }
+  100% { opacity: 0;   transform: translate(var(--tx),var(--ty)) scale(0); }
+}
+
+/* ── 泡泡衰减动画 ── */
+.memory-bubble {
+  position: absolute; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 35% 35%,
+    rgba(255,255,255,0.18) 0%, rgba(80,200,255,0.06) 40%,
+    rgba(80,180,255,0.03) 70%, transparent 100%);
+  border: 1px solid rgba(120,200,255,var(--bopacity,0.18));
+  box-shadow: inset 0 0 8px rgba(255,255,255,0.06), 0 0 12px rgba(80,200,255,0.05);
+  animation: bubbleRise var(--bdur,12s) var(--bdel,0s) ease-in forwards;
+}
+.memory-bubble::after {
+  content: ''; position: absolute;
+  width: 30%; height: 18%; top: 18%; left: 22%;
+  border-radius: 50%; background: rgba(255,255,255,0.35); filter: blur(1px);
+}
+@keyframes bubbleRise {
+  0%  { transform: translateX(0) translateY(0) scale(0.3); opacity: 0; }
+  8%  { opacity: 1; transform: translateX(var(--bx1,8px)) translateY(-4vh) scale(1); }
+  50% { opacity: 0.7; transform: translateX(var(--bx2,-12px)) translateY(-50vh) scale(1.05); }
+  85% { opacity: 0.3; transform: translateX(var(--bx3,5px)) translateY(-88vh) scale(0.95); }
+  100%{ opacity: 0;   transform: translateX(var(--bx4,0px)) translateY(-105vh) scale(0.8); }
+}
+
+/* ── 通用科技感按钮扫描光 ── */
+@keyframes pillScan {
+  0%   { top: -100%; }
+  100% { top: 200%; }
+}
+
+/* layer-header（便利贴层 / 书架层 标题区）*/
+.layer-header {
+  position: absolute; top: 72px; left: 48px;
+  z-index: 20; pointer-events: none;
+}
+.lh-zone  { font-family: var(--font-m); font-size: 9px; letter-spacing: .2em; color: rgba(80,200,255,0.4); margin-bottom: 8px; text-transform: uppercase; }
+.lh-title { font-family: var(--font-d); font-size: 28px; font-weight: 800; color: rgba(255,255,255,0.9); margin-bottom: 4px; }
+.lh-sub   { font-family: var(--font-m); font-size: 11px; letter-spacing: .08em; color: rgba(255,255,255,0.25); }
