@@ -1,12 +1,8 @@
 /**
  * useDrag.js
  * Encapsulates the sticky-note pointer-drag logic.
- * Call setupDrag(el) once per note element after it's mounted.
- *
- * Dependencies: showToast (passed in), startNoteFloat / stopNoteFloat (passed in)
  */
 
-/** Spawn upward fire / paper fragments and remove element */
 function animDeleteUp(el, px, py, showToast) {
   if (px === undefined) px = parseFloat(el.dataset.px) || 0;
   if (py === undefined) py = parseFloat(el.dataset.py) || 0;
@@ -28,7 +24,7 @@ function animDeleteUp(el, px, py, showToast) {
     setTimeout(() => f.remove(), 600);
   }
   setTimeout(() => el.remove(), 460);
-  showToast('💨 记忆已消散', 'rgba(180,180,255,0.8)');
+  // 删除 Toast：纸片飞散动效已是充分的视觉反馈
 }
 
 function animPromote(el, showToast, stopNoteFloat) {
@@ -45,13 +41,11 @@ function animPromote(el, showToast, stopNoteFloat) {
     el.style.filter     = 'saturate(2.5) brightness(1.8)';
   });
   setTimeout(() => el.remove(), 880);
-  showToast('📚 已升级至书架', 'rgba(255,180,80,0.9)');
+  showToast('📚 已升级至书架', 'rgba(255,180,80,0.9)'); // 保留：升级是有意义的状态转变
 }
 
 /**
  * Attach pointer drag behaviour to a sticky note DOM element.
- * @param {HTMLElement} el
- * @param {{ showToast, startNoteFloat, stopNoteFloat }} deps
  */
 export function setupDrag(el, { showToast, startNoteFloat, stopNoteFloat }) {
   el.addEventListener('pointerdown', (e) => {
@@ -135,7 +129,7 @@ export function setupDrag(el, { showToast, startNoteFloat, stopNoteFloat }) {
         el.style.transition = 'box-shadow .2s,filter .2s';
         el.style.boxShadow  = '3px 6px 20px rgba(0,0,0,0.6),0 0 0 2px rgba(255,80,80,0.9),0 0 40px rgba(255,60,60,0.7)';
         el.style.filter     = 'brightness(1.4) saturate(0.1) hue-rotate(-20deg)';
-        showToast('💨 记忆正在消散…', 'rgba(255,120,80,0.9)');
+        // 删除 Toast：视觉反馈已充分（红色高亮 + 纸片飞散）
         setTimeout(() => animDeleteUp(el, curPx, curPy, showToast), 320);
       } else {
         el.dataset.px   = curPx;

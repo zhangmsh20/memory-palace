@@ -3,11 +3,10 @@ import { useEffect } from 'react';
 const DIVE_ENTRIES = [
   { label: '便利贴层', desc: '短期记忆 · 漂浮于暗流之上',    depth: '—200m',  tagVar: '--tag-know', layer: 1 },
   { label: '书架层',   desc: '中期记忆 · 珊瑚礁结构',        depth: '—1000m', tagVar: '--tag-life', layer: 2 },
-  { label: '图书馆',   desc: '长期知识图谱 · 深渊发光体',     depth: '—4000m', tagVar: '--tag-id',   layer: 3 },
+  { label: '档案馆',   desc: '长期记忆归档 · 封存于深渊',     depth: '—4000m', tagVar: '--tag-id',   layer: 3 },
 ];
 
 export default function LayerIntro({ onNavigate }) {
-  // Spawn caustic rays
   useEffect(() => {
     const el = document.getElementById('caustic');
     if (!el || el.childElementCount > 0) return;
@@ -24,7 +23,6 @@ export default function LayerIntro({ onNavigate }) {
       ].join(';');
       el.appendChild(r);
     }
-    // surface motes
     const sm = document.getElementById('surface-motes');
     if (sm && sm.childElementCount === 0) {
       for (let i = 0; i < 18; i++) {

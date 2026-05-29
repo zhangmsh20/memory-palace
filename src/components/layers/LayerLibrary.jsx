@@ -153,17 +153,14 @@ export default function LayerLibrary() {
         const col   = TAG_HEX[n.type] || '#fff';
         const [r, g, b] = hexRGB(col);
         ctx.globalAlpha = alpha;
-        // glow
         const og = ctx.createRadialGradient(n.px, n.py, 0, n.px, n.py, n.size * 2.8);
         og.addColorStop(0, `rgba(${r},${g},${b},.12)`); og.addColorStop(1, 'transparent');
         ctx.fillStyle = og; ctx.beginPath(); ctx.arc(n.px, n.py, n.size * 2.8, 0, Math.PI * 2); ctx.fill();
-        // circle
         ctx.beginPath(); ctx.arc(n.px, n.py, n.size, 0, Math.PI * 2);
         const ng = ctx.createRadialGradient(n.px - n.size * .3, n.py - n.size * .3, 0, n.px, n.py, n.size);
         ng.addColorStop(0, `rgba(${r},${g},${b},.92)`); ng.addColorStop(1, `rgba(${r},${g},${b},.5)`);
         ctx.fillStyle = ng; ctx.fill();
         ctx.strokeStyle = `rgba(${r},${g},${b},.55)`; ctx.lineWidth = 1.5; ctx.stroke();
-        // label
         ctx.fillStyle = `rgba(255,255,255,${0.82 * alpha})`;
         ctx.font = `${n.id === 0 ? 700 : 500} ${n.size * 0.72}px 'Syne'`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -184,10 +181,10 @@ export default function LayerLibrary() {
       <div className="library-ui">
         <div className="library-header">
           <div>
-            <div className="lib-title">图书馆<span>— 4000m · 午夜层 · 长期知识图谱</span></div>
+            <div className="lib-title">档案馆<span>— 4000m · 午夜层 · 长期记忆归档</span></div>
           </div>
           <div className="lib-search">
-            <input className="lib-search-input" id="lib-search" placeholder="语义检索记忆…" />
+            <input className="lib-search-input" id="lib-search" placeholder="检索档案记忆…" />
             <div className="lib-search-btn">⌕</div>
           </div>
         </div>
@@ -200,7 +197,7 @@ export default function LayerLibrary() {
         <div className="nt-conns" id="nt-conns" />
       </div>
       <div className="lib-timeline">
-        <div className="lt-label">时间轴 · 拖动回溯</div>
+        <div className="lt-label">归档时间轴 · 拖动回溯</div>
         <div className="lt-track" id="lt-track">
           <div className="lt-fill"   id="lt-fill"   style={{ width: '100%' }} />
           <div className="lt-handle" id="lt-handle" style={{ right: 0 }} />

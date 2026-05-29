@@ -31,14 +31,13 @@ html, body {
   position: fixed; inset: 0;
   overflow-y: hidden; overflow-x: hidden;
   scrollbar-width: none;
-  touch-action: none; /* 完全由 JS 接管，禁止原生触摸滚动抢跑 */
+  touch-action: none;
 }
 #ocean::-webkit-scrollbar { display: none; }
 
 /* ── SECTION BASE ── */
 .layer {
   position: relative; width: 100%; height: 100vh;
-  /* scroll-snap-align 移除，导航完全由 DiveTransition.go() 控制 */
   display: flex; align-items: center; justify-content: center;
   overflow: hidden;
 }
@@ -55,7 +54,7 @@ html, body {
 #layer-shelf::after   { background: radial-gradient(ellipse 100% 50% at 50% 100%, rgba(30,15,5,0.25),    transparent 70%); }
 #layer-library::after { background: radial-gradient(ellipse 80%  80% at 50% 50%,  rgba(10,5,30,0.3),     transparent 80%); }
 
-/* ── LOGO ── */
+/* ── LOGO + 演示控制栏 ── */
 #logo {
   position: fixed; top: 0; left: 0; right: 0; z-index: 200;
   padding: 20px 36px; display: flex; align-items: center;
@@ -70,6 +69,59 @@ html, body {
 .logo-ver {
   font-family: var(--font-m); font-size: 9px;
   color: var(--tag-know); margin-left: 8px; letter-spacing: .06em; opacity: 0.6;
+}
+
+/* ── 动态演示按钮 ── */
+#demo-toggle {
+  margin-left: auto;           /* 推到最右 */
+  pointer-events: all;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 18px;
+  font-family: var(--font-m); font-size: 10px; letter-spacing: .16em;
+  text-transform: uppercase;
+  color: rgba(80,220,180,0.7);
+  background: rgba(4,4,18,0.75);
+  border: 1px solid rgba(80,220,180,0.25);
+  border-radius: 0;                /* 配合 clip-path 的科技感 */
+  clip-path: polygon(8px 0%,100% 0%,100% calc(100% - 8px),calc(100% - 8px) 100%,0% 100%,0% 8px);
+  cursor: pointer;
+  backdrop-filter: blur(16px);
+  transition: color .25s, border-color .25s, background .25s, box-shadow .25s;
+  position: relative; overflow: hidden;
+}
+/* 扫描光（与 trigger-pill 同款） */
+#demo-toggle::before {
+  content: ''; position: absolute; top: -100%; left: 0; right: 0; height: 100%;
+  background: linear-gradient(180deg,transparent,rgba(80,220,180,0.07),transparent);
+  animation: pillScan 3s linear infinite; pointer-events: none;
+}
+#demo-toggle:hover {
+  color: rgba(80,220,180,1);
+  border-color: rgba(80,220,180,0.6);
+  background: rgba(80,220,180,0.07);
+  box-shadow: 0 0 18px rgba(80,220,180,0.15);
+}
+/* 运行中状态 */
+#demo-toggle.demo-running {
+  color: rgba(255,200,80,0.9);
+  border-color: rgba(255,200,80,0.45);
+  background: rgba(255,200,80,0.06);
+  box-shadow: 0 0 14px rgba(255,200,80,0.12);
+}
+#demo-toggle.demo-running:hover {
+  color: rgba(255,200,80,1);
+  border-color: rgba(255,200,80,0.75);
+  box-shadow: 0 0 24px rgba(255,200,80,0.22);
+}
+/* 指示灯 */
+.dt-indicator {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(80,220,180,0.7);
+  transition: background .3s;
+}
+#demo-toggle.demo-running .dt-indicator {
+  background: rgba(255,200,80,0.9);
+  animation: aipulse 1.4s ease-in-out infinite;
 }
 
 /* ── DEPTH GAUGE (右侧导航) ── */
@@ -217,3 +269,6 @@ html, body {
 .lh-zone  { font-family: var(--font-m); font-size: 9px; letter-spacing: .2em; color: rgba(80,200,255,0.4); margin-bottom: 8px; text-transform: uppercase; }
 .lh-title { font-family: var(--font-d); font-size: 28px; font-weight: 800; color: rgba(255,255,255,0.9); margin-bottom: 4px; }
 .lh-sub   { font-family: var(--font-m); font-size: 11px; letter-spacing: .08em; color: rgba(255,255,255,0.25); }
+
+/* ── aipulse（被多处共用） ── */
+@keyframes aipulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.4; transform:scale(.7); } }

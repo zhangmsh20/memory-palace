@@ -3,7 +3,7 @@ import { STICKY_DATA, TIME_BANDS, TAG_HEX_MAP } from '../../data/stickyNotes';
 import { setupDrag } from '../../hooks/useDrag';
 import { decayLabel } from '../../utils/decay';
 
-// ── float engine (module-level to persist across renders) ──
+// ── float engine ──
 const floatTimers = new WeakMap();
 function startNoteFloat(el, phase) {
   let t = (phase || 0) * 1000;
@@ -25,11 +25,10 @@ function stopNoteFloat(el) {
   floatTimers.delete(el);
 }
 
+// ── Toast：仅保留有实质意义的两种 ──
 function showToast(msg, col = 'rgba(80,220,180,0.9)') {
   const t = document.createElement('div');
-  t.className = 'toast';
-  t.textContent = msg;
-  t.style.color = col;
+  t.className = 'toast'; t.textContent = msg; t.style.color = col;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 2200);
 }
@@ -43,6 +42,7 @@ function advanceDecayEl(el) {
   el.classList.add('decay-' + next);
   const tEl = el.querySelector('.s-time');
   if (tEl) tEl.textContent = decayLabel(next);
+  // 衰减状态变化不再弹 Toast，视觉变化本身即是反馈
 }
 
 function animDissolve(el) {
@@ -59,7 +59,7 @@ function animDissolve(el) {
     el.style.filter     = 'saturate(0) brightness(0.5)';
   });
   setTimeout(() => el.remove(), 2000);
-  showToast('🌊 记忆已自然消散', 'rgba(130,100,255,0.8)');
+  // 删除 Toast：消散动效本身已足够清晰
 }
 
 function spawnBubble(board) {
@@ -76,7 +76,6 @@ function spawnBubble(board) {
   const bx3  = (Math.random() - 0.5) * 30;
   const bx4  = (Math.random() - 0.5) * 20;
   const opacity = size < 10 ? 0.12 + Math.random() * 0.10 : size < 16 ? 0.15 + Math.random() * 0.12 : 0.18 + Math.random() * 0.10;
-
   const el = document.createElement('div');
   el.className = 'memory-bubble';
   el.style.cssText = `width:${size}px;height:${size}px;left:${x}px;top:${y}px;--bdur:${dur}s;--bdel:${del}s;--bopacity:${opacity};--bx1:${bx1}px;--bx2:${bx2}px;--bx3:${bx3}px;--bx4:${bx4}px;`;
@@ -123,12 +122,15 @@ function createNoteFromInput(text, board) {
   }));
   setTimeout(() => { el.style.transition = ''; startNoteFloat(el, Math.random() * 10); }, 450);
   setupDrag(el, { showToast, startNoteFloat, stopNoteFloat });
-  showToast('✦ 便利贴已生成');
+  showToast('✦ 便利贴已生成'); // 保留：用户主动创建，需要确认反馈
 }
 
-export default function LayerSticky() {
-  const inited = useRef(false);
+export default function LayerSticky({ isDemoMode }) {
+  const inited     = useRef(false);
+  // 用 ref 存计时器 ID，方便随时清除
+  const timersRef  = useRef({ decay1: null, decay2: null, bubble: null });
 
+  // ── 初始化（只跑一次）：生成便利贴 + 气泡 + 绑定输入 ──
   useEffect(() => {
     if (inited.current) return;
     inited.current = true;
@@ -136,7 +138,7 @@ export default function LayerSticky() {
     const board = document.getElementById('sticky-board');
     if (!board) return;
 
-    // time-band backgrounds
+    // 时间带背景
     TIME_BANDS.forEach(b => {
       const el    = document.createElement('div');
       el.style.cssText = `position:absolute;left:0;right:0;top:${b.yFrom*100}%;height:${(b.yTo-b.yFrom)*100}%;background:${b.color};pointer-events:none;border-top:1px solid rgba(255,255,255,0.025);z-index:0;`;
@@ -149,27 +151,13 @@ export default function LayerSticky() {
 
     STICKY_DATA.forEach(d => spawnNote(d, board));
 
-    // live decay engine
-    const decayTimer1 = setInterval(() => {
-      const notes = Array.from(board.querySelectorAll('.sticky-note'));
-      const cooling = notes.filter(n => n.dataset.decay === 'cooling');
-      if (cooling.length) { advanceDecayEl(cooling[Math.floor(Math.random() * cooling.length)]); return; }
-      const fresh = notes.filter(n => n.dataset.decay === 'fresh');
-      if (fresh.length > 2) advanceDecayEl(fresh[fresh.length - 1]);
-    }, 8000);
-
-    const decayTimer2 = setInterval(() => {
-      const critical = Array.from(board.querySelectorAll('.sticky-note[data-decay="critical"]'));
-      if (critical.length) animDissolve(critical[0]);
-    }, 20000);
-
-    // bubble engine
+    // 气泡：始终生成（纯视觉，与演示模式无关）
     for (let i = 0; i < 14; i++) {
       setTimeout(() => spawnBubble(board), i * 700 + Math.random() * 400);
     }
-    const bubbleTimer = setInterval(() => spawnBubble(board), 2200 + Math.random() * 800);
+    timersRef.current.bubble = setInterval(() => spawnBubble(board), 2200 + Math.random() * 800);
 
-    // input
+    // 输入框
     const input = document.getElementById('sib-input');
     const send  = document.getElementById('sib-send');
     const doSend = () => {
@@ -181,12 +169,44 @@ export default function LayerSticky() {
     if (send)  send.onclick = doSend;
     if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') doSend(); });
 
+    // 注意：气泡计时器一直跑，cleanup 在组件卸载时处理
     return () => {
-      clearInterval(decayTimer1);
-      clearInterval(decayTimer2);
-      clearInterval(bubbleTimer);
+      clearInterval(timersRef.current.bubble);
     };
   }, []);
+
+  // ── isDemoMode 变化时：启动或停止衰减计时器 ──
+  useEffect(() => {
+    const board = document.getElementById('sticky-board');
+    if (!board) return;
+
+    if (isDemoMode) {
+      // 启动衰减
+      timersRef.current.decay1 = setInterval(() => {
+        const notes = Array.from(board.querySelectorAll('.sticky-note'));
+        const cooling = notes.filter(n => n.dataset.decay === 'cooling');
+        if (cooling.length) { advanceDecayEl(cooling[Math.floor(Math.random() * cooling.length)]); return; }
+        const fresh = notes.filter(n => n.dataset.decay === 'fresh');
+        if (fresh.length > 2) advanceDecayEl(fresh[fresh.length - 1]);
+      }, 8000);
+
+      timersRef.current.decay2 = setInterval(() => {
+        const critical = Array.from(board.querySelectorAll('.sticky-note[data-decay="critical"]'));
+        if (critical.length) animDissolve(critical[0]);
+      }, 20000);
+    } else {
+      // 停止衰减
+      clearInterval(timersRef.current.decay1);
+      clearInterval(timersRef.current.decay2);
+      timersRef.current.decay1 = null;
+      timersRef.current.decay2 = null;
+    }
+
+    return () => {
+      clearInterval(timersRef.current.decay1);
+      clearInterval(timersRef.current.decay2);
+    };
+  }, [isDemoMode]);
 
   return (
     <div className="layer" id="layer-sticky">

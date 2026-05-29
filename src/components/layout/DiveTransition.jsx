@@ -8,16 +8,11 @@ const LAYER_ACCENTS = [
 ];
 
 const DEPTHS    = ['0m', '—200m', '—1000m', '—4000m'];
-const ZONES     = ['海面', '温跃层', '珊瑚礁', '深渊图书馆'];
-const COPY_DOWN = ['', '短期记忆在这里漂浮，等待沉淀', '沉淀的知识生长为有机结构', '最深处的记忆，靠自身发光而存在'];
+const ZONES     = ['海面', '温跃层', '珊瑚礁', '午夜档案馆'];
+const COPY_DOWN = ['', '短期碎片在这里漂浮，等待沉淀', '反复出现的记忆，沉淀成体系', '岁月的痕迹，封存于最深处'];
 const COPY_UP   = '记忆浮出，重见光明';
 const LAYER_IDS = ['layer-intro', 'layer-sticky', 'layer-shelf', 'layer-library'];
 
-/**
- * go(fromIdx, toIdx, onArrival?)
- *   onArrival — 在屏幕黑屏、页面已跳位后立即回调，
- *               App.jsx 用它来 setCurrentLayer(toIdx)
- */
 export function useDiveTransition() {
   const isTransitioning = useRef(false);
 
@@ -77,20 +72,16 @@ export function useDiveTransition() {
 
     setTimeout(() => { dt.classList.add('show-text'); }, fadeIn * 0.7);
 
-    // ── 核心修复：黑屏完成后立即跳位 + 通知 App ──
     setTimeout(() => {
-      // 页面已全黑，此时 instant 跳位用户看不到任何闪烁
       const el    = document.getElementById(LAYER_IDS[toIdx]);
       const ocean = document.getElementById('ocean');
       if (el && ocean) ocean.scrollTo({ top: el.offsetTop, behavior: 'instant' });
 
-      // 同步更新 entering 状态（原来在 IntersectionObserver 里做）
       LAYER_IDS.forEach((id, i) => {
         const layerEl = document.getElementById(id);
         if (layerEl) layerEl.classList.toggle('entering', i === toIdx);
       });
 
-      // 通知 App.jsx 更新 currentLayer
       if (typeof onArrival === 'function') onArrival(toIdx);
     }, fadeIn);
 

@@ -4,6 +4,10 @@ import { BOOK_STAGE_DURATION } from '../../utils/decay';
 
 const BOOK_DECAY_STAGES = ['fresh', 'cooling', 'fading', 'critical'];
 
+// 静态模式下各衰减阶段进度条的初始显示比例（仅用于视觉呈现）
+const STATIC_PROGRESS = { fresh: 0.15, cooling: 0.55, fading: 0.80, critical: 1.0 };
+
+// 保留的 Toast：仅归档和销毁这两个用户主动操作
 function showToast(msg, col = 'rgba(80,220,180,0.9)') {
   const t = document.createElement('div');
   t.className = 'toast'; t.textContent = msg; t.style.color = col;
@@ -19,11 +23,14 @@ function makeDust(decay) {
   ).join('');
 }
 
+// ── 动态模式下的书本计时器 ──
 function runBookTimer(el) {
   function tick() {
     if (!el.isConnected) return;
     const stage    = el.dataset.stage;
     if (stage === 'critical') return;
+    // 如果已被暂停（静态模式），停止走动
+    if (el.dataset.paused === 'true') return;
     const elapsed  = Date.now() - parseInt(el.dataset.stageStart);
     const duration = parseInt(el.dataset.stageMs);
     const pct      = Math.min(1, elapsed / duration);
@@ -44,37 +51,62 @@ function advanceBookStage(el) {
   el.dataset.stage      = next;
   el.dataset.stageStart = Date.now();
   el.dataset.stageMs    = BOOK_STAGE_DURATION[next] || (12000 + Math.random() * 6000);
-  const spine = el.querySelector('.book-spine');
-  if (spine) spine.style.transition = 'filter 3s ease';
+  // 删除 Toast：书本阶段推进不再弹提示，视觉变化本身已是反馈
   if (next === 'cooling' || next === 'fading') {
     const d = document.createElement('div'); d.className = 'dust';
     d.style.cssText = `left:${45 + Math.random() * 20}%;top:0;--dur:${6 + Math.random() * 4}s;--del:0s;--dx:${-3 + Math.random() * 6}px`;
     el.appendChild(d);
   }
-  showToast(`📖 《${el.querySelector('.book-title')?.textContent || '记忆'}》开始${next === 'cooling' ? '冷却' : '褪色'}`,
-    next === 'cooling' ? 'rgba(255,200,80,0.8)' : 'rgba(150,120,80,0.8)');
-  if (next !== 'critical') runBookTimer(el);
-  else {
+  if (next !== 'critical') {
+    if (el.dataset.paused !== 'true') runBookTimer(el);
+  } else {
     const fill = el.querySelector('.bdp-fill');
-    if (fill) { fill.style.width = '100%'; fill.style.background = 'rgba(255,80,80,0.7)'; fill.style.animation = 'critFill 1.8s ease-in-out infinite'; }
+    if (fill) {
+      fill.style.width = '100%';
+      fill.style.background = 'rgba(255,80,80,0.7)';
+      fill.style.animation = 'critFill 1.8s ease-in-out infinite';
+    }
   }
 }
 
-function scheduleBookDecay(el, i) {
-  el.dataset.stage      = 'fresh';
+// 为书本添加进度条并根据模式决定是否启动计时
+function initBookDecay(el, i, isDemoMode) {
+  const initDecay = el.dataset.initDecay || 'fresh';
+  el.dataset.stage      = initDecay;
   el.dataset.stageStart = Date.now();
-  el.dataset.stageMs    = BOOK_STAGE_DURATION.fresh + i * 1200 + Math.random() * 5000;
+  el.dataset.stageMs    = BOOK_STAGE_DURATION[initDecay] + i * 1200 + Math.random() * 5000;
+  el.dataset.paused     = isDemoMode ? 'false' : 'true';
+
   const prog = document.createElement('div');
   prog.className = 'book-decay-prog';
   prog.innerHTML = '<div class="bdp-fill"></div>';
   el.querySelector('.book-spine').appendChild(prog);
-  runBookTimer(el);
+
+  const fill = prog.querySelector('.bdp-fill');
+
+  if (initDecay === 'critical') {
+    // critical 书本进度条始终显示满格红色
+    fill.style.width = '100%';
+    fill.style.background = 'rgba(255,80,80,0.7)';
+    fill.style.animation = 'critFill 1.8s ease-in-out infinite';
+    return;
+  }
+
+  if (isDemoMode) {
+    // 动态模式：启动计时器
+    runBookTimer(el);
+  } else {
+    // 静态模式：显示固定比例，不走动
+    const staticPct = STATIC_PROGRESS[initDecay] || 0.15;
+    fill.style.width = (staticPct * 100) + '%';
+  }
 }
 
-export default function LayerShelf() {
-  const inited = useRef(false);
-  const [openBook, setOpenBook] = useState(null); // BOOKS[i] or null
+export default function LayerShelf({ isDemoMode }) {
+  const inited  = useRef(false);
+  const [openBook, setOpenBook] = useState(null);
 
+  // ── 初始化：只跑一次 ──
   useEffect(() => {
     if (inited.current) return;
     inited.current = true;
@@ -87,7 +119,8 @@ export default function LayerShelf() {
     BOOKS.forEach((b, i) => {
       const el = document.createElement('div');
       el.className = `book ${b.decay}`;
-      el.dataset.idx = i;
+      el.dataset.idx       = i;
+      el.dataset.initDecay = b.decay; // 记录初始衰减状态，供后续 isDemoMode 切换时用
       el.style.height = b.h + 'px';
       el.style.setProperty('--book-h', b.h + 'px');
       el.innerHTML = `
@@ -108,7 +141,9 @@ export default function LayerShelf() {
           </div>
         </div>`;
       rows[b.row].appendChild(el);
-      if (b.decay === 'fresh') scheduleBookDecay(el, i);
+
+      // 初始化进度条（静态模式）
+      initBookDecay(el, i, false);
 
       // 点击书脊 → 打开书页
       el.querySelector('.book-spine').addEventListener('click', (e) => {
@@ -126,13 +161,17 @@ export default function LayerShelf() {
       card.addEventListener('mouseenter', () => clearTimeout(closeTimer));
       card.addEventListener('mouseleave', closeCard);
 
-      // archive / burn buttons
+      // 归档按钮
       card.querySelector('[data-archive]').addEventListener('click', (e) => {
         e.stopPropagation();
         el.style.transition = 'all .8s cubic-bezier(.4,0,.2,1)';
-        el.style.transform  = 'translateY(-24px) scale(0.7)'; el.style.opacity = '0';
-        setTimeout(() => el.remove(), 800); showToast('📖 已归档至图书馆');
+        el.style.transform  = 'translateY(-24px) scale(0.7)';
+        el.style.opacity    = '0';
+        setTimeout(() => el.remove(), 800);
+        showToast('📖 已归档至档案馆'); // 保留：用户主动操作需要确认
       });
+
+      // 销毁按钮
       card.querySelector('[data-burn]').addEventListener('click', (e) => {
         e.stopPropagation();
         const rect = el.getBoundingClientRect();
@@ -142,16 +181,44 @@ export default function LayerShelf() {
           p.style.cssText = `width:${sz}px;height:${sz}px;left:${rect.left + rect.width * .5}px;top:${rect.top + rect.height * .5}px;background:hsl(${15 + Math.random() * 35},92%,${48 + Math.random() * 22}%);--tx:${-35 + Math.random() * 70}px;--ty:${-70 + Math.random() * -35}px;animation-delay:${Math.random() * .25}s`;
           document.body.appendChild(p); setTimeout(() => p.remove(), 1100);
         }
-        el.style.transition = 'all .5s ease'; el.style.opacity = '0'; el.style.transform = 'scale(0)';
-        setTimeout(() => el.remove(), 500); showToast('🔥 记忆已销毁', 'var(--tag-rel)');
+        el.style.transition = 'all .5s ease';
+        el.style.opacity    = '0';
+        el.style.transform  = 'scale(0)';
+        setTimeout(() => el.remove(), 500);
+        showToast('🔥 记忆已销毁', 'var(--tag-rel)'); // 保留：破坏性操作需要确认
       });
     });
   }, []);
 
+  // ── isDemoMode 变化：切换所有书本的计时器状态 ──
+  useEffect(() => {
+    const bookEls = Array.from(document.querySelectorAll('.book[data-init-decay]'));
+    bookEls.forEach(el => {
+      if (el.dataset.stage === 'critical') return; // critical 不受影响
+
+      if (isDemoMode) {
+        // 从静态切换到动态：记录切换时刻为新的 stageStart，开始计时
+        el.dataset.paused     = 'false';
+        el.dataset.stageStart = Date.now();
+        runBookTimer(el);
+      } else {
+        // 从动态切换回静态：标记暂停，进度条停在当前位置（tick 内检查 paused 会自动停止）
+        el.dataset.paused = 'true';
+      }
+    });
+  }, [isDemoMode]);
+
   function triggerScene(type) {
     if (type === 'reset') {
-      document.querySelectorAll('.book.triggered').forEach(b => { b.classList.remove('triggered'); b.style.transform = ''; b.style.opacity = ''; });
-      document.querySelectorAll('.book').forEach(b => { b.style.opacity = ''; b.style.transition = ''; });
+      document.querySelectorAll('.book.triggered').forEach(b => {
+        b.classList.remove('triggered');
+        b.style.transform = '';
+        b.style.opacity   = '';
+      });
+      document.querySelectorAll('.book').forEach(b => {
+        b.style.opacity    = '';
+        b.style.transition = '';
+      });
       document.getElementById('shelf-overlay').classList.remove('on');
       return;
     }
@@ -165,7 +232,7 @@ export default function LayerShelf() {
         else { b.style.opacity = '.2'; b.style.transition = 'opacity .5s'; }
       }
     });
-    showToast(type === 'cooking' ? '🍳 食谱记忆已浮现' : '💼 工作记忆已激活');
+    // 删除 Toast：书本弹出的视觉效果本身已是充分反馈
   }
 
   return (
@@ -188,13 +255,12 @@ export default function LayerShelf() {
         </div>
       </div>
 
-      {/* 书页浮层 */}
       {openBook && <BookPage book={openBook} onClose={() => setOpenBook(null)} />}
     </>
   );
 }
 
-// ── 书页浮层组件 ──────────────────────────────────────
+// ── 书页浮层 ──
 const DECAY_LABEL = { fresh: '鲜活', cooling: '冷却中', fading: '褪色', critical: '临界' };
 const DECAY_COLOR = {
   fresh:    'rgba(80,220,180,0.9)',
@@ -209,7 +275,7 @@ function BookPage({ book, onClose }) {
 
   function deleteEntry(id) {
     setEntries(prev => prev.filter(e => e.id !== id));
-    showToast('🗑 记忆条目已删除', 'rgba(255,100,100,0.8)');
+    // 删除 Toast：条目已从列表消失，视觉反馈充分
   }
   function toggleImportant(id) {
     setEntries(prev => prev.map(e => e.id === id ? { ...e, important: !e.important } : e));
@@ -219,7 +285,6 @@ function BookPage({ book, onClose }) {
     <div className="book-page-overlay" onClick={onClose}>
       <div className="book-page-panel" onClick={e => e.stopPropagation()}>
 
-        {/* 书页左侧：目录 & 元信息 */}
         <div className="bp-left" style={{ borderColor: tagColor + '30' }}>
           <div className="bp-cover-strip" style={{ background: book.color }} />
           <div className="bp-meta">
@@ -248,16 +313,21 @@ function BookPage({ book, onClose }) {
           </div>
 
           <div className="bp-actions">
-            <div className="bp-action-btn archive" onClick={() => { onClose(); showToast('📚 已压入图书馆'); }}>
-              ↓ 压入图书馆
+            <div className="bp-action-btn archive" onClick={() => {
+              onClose();
+              showToast('📚 已压入档案馆'); // 保留：用户主动操作
+            }}>
+              ↓ 压入档案馆
             </div>
-            <div className="bp-action-btn burn" onClick={() => { onClose(); showToast('🔥 书籍已销毁', 'var(--tag-rel)'); }}>
+            <div className="bp-action-btn burn" onClick={() => {
+              onClose();
+              showToast('🔥 书籍已销毁', 'var(--tag-rel)'); // 保留：破坏性操作
+            }}>
               🔥 销毁
             </div>
           </div>
         </div>
 
-        {/* 书页右侧：记忆条目 */}
         <div className="bp-right">
           <div className="bp-right-header">
             <div className="bp-right-title">记忆条目</div>
@@ -292,7 +362,6 @@ function BookPage({ book, onClose }) {
           </div>
         </div>
 
-        {/* 关闭 */}
         <div className="bp-close" onClick={onClose}>✕</div>
       </div>
     </div>

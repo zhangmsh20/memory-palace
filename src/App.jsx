@@ -21,15 +21,14 @@ import { useDepthScroll } from './hooks/useDepthScroll';
 
 export default function App() {
   const [currentLayer, setCurrentLayer] = useState(0);
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
-  // currentLayerRef 让 wheel/touch handler 在闭包中拿到最新值（不需要重新注册事件）
   const currentLayerRef = useRef(0);
   useEffect(() => { currentLayerRef.current = currentLayer; }, [currentLayer]);
 
   const transition = useDiveTransition();
   const { scrollToLayer } = useDepthScroll();
 
-  // 唯一导航入口：播放过场 → 黑屏时跳位 → 回调更新 state
   const navigateTo = useCallback((n) => {
     const from = currentLayerRef.current;
     if (n === from) return;
@@ -42,7 +41,7 @@ export default function App() {
   useEffect(() => {
     let accum = 0, timer = null;
     function onWheel(e) {
-      e.preventDefault(); // 阻止浏览器原生滚动（ocean 已 overflow:hidden，双重保险）
+      e.preventDefault();
       accum += e.deltaY;
       clearTimeout(timer);
       timer = setTimeout(() => {
@@ -56,7 +55,6 @@ export default function App() {
       }, 80);
     }
     const ocean = document.getElementById('ocean');
-    // passive:false 才能 preventDefault
     if (ocean) ocean.addEventListener('wheel', onWheel, { passive: false });
     return () => { if (ocean) ocean.removeEventListener('wheel', onWheel); };
   }, [navigateTo]);
@@ -106,10 +104,20 @@ export default function App() {
       <div id="pressure-bar"><div id="pressure-fill" /></div>
       <DiveTransition />
 
-      {/* Logo */}
+      {/* Logo + 演示控制 */}
       <div id="logo">
         <div className="logo-text" onClick={() => navigateTo(0)}>MEMORY PALACE</div>
         <div className="logo-ver">ABYSS EDITION</div>
+
+        {/* 动态演示开关 —— 右侧 */}
+        <button
+          id="demo-toggle"
+          className={isDemoMode ? 'demo-running' : ''}
+          onClick={() => setIsDemoMode(v => !v)}
+        >
+          <span className="dt-indicator" />
+          {isDemoMode ? '⏸ 暂停演示' : '▶ 动态演示'}
+        </button>
       </div>
 
       {/* Right nav */}
@@ -123,8 +131,8 @@ export default function App() {
       {/* Main scroll container */}
       <Ocean>
         <LayerIntro   onNavigate={navigateTo} />
-        <LayerSticky  />
-        <LayerShelf   />
+        <LayerSticky  isDemoMode={isDemoMode} />
+        <LayerShelf   isDemoMode={isDemoMode} />
         <LayerLibrary />
       </Ocean>
 
