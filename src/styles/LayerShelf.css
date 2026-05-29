@@ -18,11 +18,13 @@
   display: flex; flex-direction: column; gap: 14px; justify-content: flex-end; height: 420px;
 }
 .shelf-row {
-  position: relative; display: flex; align-items: flex-end; gap: 6px;
+  position: relative; display: flex; align-items: flex-end;
   padding: 0 8px 10px;
   border-bottom: 2px solid rgba(160,120,60,0.2);
   background: linear-gradient(180deg,transparent 80%,rgba(80,55,20,0.08) 100%);
   min-height: 110px; overflow: visible;
+  /* ✦ PATCH 4a: 书本间距 6px → 10px，让书架有呼吸感 */
+  gap: 10px;
 }
 .shelf-row::before {
   content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
@@ -49,14 +51,12 @@
   justify-content: center;
   position: relative;
   overflow: hidden;
-  /* 竖排文字 */
   writing-mode: vertical-rl;
   text-orientation: mixed;
   padding: 14px 0;
   gap: 10px;
   border-right: 1px solid rgba(0, 0, 0, 0.5);
   min-width: 28px;
-  /* 修复：确保内容水平居中 */
   text-align: center;
 }
 
@@ -81,11 +81,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: calc(var(--book-h, 120px) - 32px);
-  /* 关键修复：移除 padding，改用 margin auto 让文字在书脊内真正居中 */
   margin: 0 auto;
   position: relative;
   z-index: 1;
-  /* 让竖排文字在书脊宽度方向居中 */
   align-self: center;
 }
 
@@ -93,27 +91,43 @@
 .book-cover { position: absolute; right: -18px; top: 0; bottom: 0; width: 18px; border-radius: 0 2px 2px 0; background: inherit; filter: brightness(0.55); }
 .book-top   { position: absolute; top: -4px; left: 0; right: -18px; height: 4px; border-radius: 2px 2px 0 0; background: inherit; filter: brightness(1.35); }
 
-/* 衰减状态 */
+/* ── 衰减状态
+   ✦ PATCH 4b: 加大 fading/critical 的倾斜和下移幅度，让衰减梯度更可感知
+   ── */
 .book.fresh    .book-spine { filter: saturate(1) brightness(1); }
 .book.cooling  .book-spine { filter: saturate(0.65) brightness(0.85); }
 .book.fading   .book-spine { filter: saturate(0.3) brightness(0.65); }
-.book.fading:not(.lift-hover)  { transform: rotate(-0.6deg); }
+
+/* fading: 倾斜从 -0.6deg → -1.2deg，增加 translateY(2px)，配合更低的饱和度 */
+.book.fading:not(.lift-hover) {
+  transform: rotate(-1.2deg) translateY(2px);
+}
+
+/* critical: 倾斜从 -1.8deg → -2.4deg，translateY 从 4px → 6px，加抖动动画 */
 .book.critical .book-spine { filter: saturate(0.08) brightness(0.45); }
-.book.critical { transform: rotate(-1.8deg) translateY(4px); }
+.book.critical:not(.lift-hover) {
+  transform: rotate(-2.4deg) translateY(6px);
+  animation: criticalTilt 4s ease-in-out infinite;
+}
+
+/* ✦ PATCH 4c: critical 书本轻微摇晃，暗示"快要倒下"*/
+@keyframes criticalTilt {
+  0%, 100% { transform: rotate(-2.4deg) translateY(6px); }
+  40%      { transform: rotate(-2.8deg) translateY(7px); }
+  70%      { transform: rotate(-2.0deg) translateY(5px); }
+}
 
 /* ══════════════════════════════════════
-   [PATCH] book-decay-prog 修复：确保在书脊竖排布局中可见
+   [PATCH] book-decay-prog
    ══════════════════════════════════════ */
 .book-decay-prog {
   position: absolute;
-  /* 书脊是竖排，进度条沿书脊宽度方向（水平）显示在底部 */
   bottom: 0;
   left: 0;
   right: 0;
   height: 3px;
   background: rgba(255, 255, 255, 0.06);
   overflow: hidden;
-  /* 重置 writing-mode，让进度条本身保持水平 */
   writing-mode: horizontal-tb;
 }
 
@@ -144,11 +158,10 @@
 }
 
 /* ══════════════════════════════════════
-   书本悬停卡片（★ 左侧弹出）
+   书本悬停卡片（上方弹出）
    ══════════════════════════════════════ */
 .book-card {
   position: absolute;
-  /* ★ 改为上方弹出，避免干扰书本 bounding box */
   bottom: calc(100% + 10px);
   left: 50%;
   right: auto;
@@ -167,13 +180,12 @@
   backdrop-filter: blur(24px);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7);
 }
-/* ★ 关键：把桥接区改到下方（因为卡片在书本上方，鼠标从书本移向卡片是向上移动） */
 .book-card::after {
   content: '';
   position: absolute;
-  top: -8px;       /* 向上少量延伸（鼠标进入卡片前的过渡区） */
+  top: -8px;
   right: -20px;
-  bottom: -28px;   /* ★ 向下延伸桥接到书脊 */
+  bottom: -28px;
   left: -20px;
   z-index: -1;
 }
@@ -211,7 +223,6 @@
 .bc-btn.archive:hover { border-color: var(--tag-id); background: rgba(155,107,255,0.15); box-shadow: 0 0 12px rgba(155,107,255,0.3); }
 .bc-btn.burn    { border-color: rgba(255,107,107,0.4); color: rgba(255,107,107,0.85); }
 .bc-btn.burn:hover    { border-color: var(--tag-rel); background: rgba(255,107,107,0.15); box-shadow: 0 0 12px rgba(255,107,107,0.3); }
-/* 打开按钮用等宽排布 */
 .bc-btn.open    { border-color: rgba(80,200,255,0.3); color: rgba(80,200,255,0.7); font-size: 12px; }
 .bc-btn.open:hover    { border-color: rgba(80,200,255,0.7); background: rgba(80,200,255,0.1); color: #fff; }
 
@@ -278,7 +289,6 @@
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 18px; overflow: hidden;
   box-shadow: 0 40px 120px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.04);
-  /* ★ 翻书效果入场动画 */
   animation: bpPanelIn .42s cubic-bezier(.34,1.2,.64,1) forwards;
   transform-style: preserve-3d;
 }
