@@ -1,18 +1,74 @@
 export const NODES = [
-  { id:  0, label: '我',        type: 'id',   desc: '核心自我节点',                  x: .50, y: .50, size: 22, connections: 8 },
-  { id:  1, label: 'AI产品经理', type: 'work', desc: '当前职业方向',                  x: .73, y: .30, size: 17 },
-  { id:  2, label: '黑客松2026', type: 'work', desc: '当前最重要的工作任务',           x: .62, y: .20, size: 15 },
-  { id:  3, label: '记忆宫殿',   type: 'work', desc: '正在设计的核心产品',             x: .52, y: .16, size: 14 },
-  { id:  4, label: '力量训练',   type: 'life', desc: '每周3次，避免膝盖负担',          x: .27, y: .33, size: 13 },
-  { id:  5, label: '红烧肉食谱', type: 'life', desc: '拿手菜，五花肉+老抽+冰糖',      x: .18, y: .50, size: 11 },
-  { id:  6, label: '简洁偏好',   type: 'id',   desc: '不喜欢废话，直接给结论',         x: .76, y: .54, size: 13 },
-  { id:  7, label: '知识图谱',   type: 'know', desc: '技术兴趣，正在深入学习',         x: .42, y: .74, size: 14 },
-  { id:  8, label: '王明',       type: 'rel',  desc: '朋友，设计爱好者，下周来访',     x: .21, y: .70, size: 12 },
-  { id:  9, label: '早起习惯',   type: 'emo',  desc: '偏好7-9点工作与运动',           x: .80, y: .70, size: 11 },
-  { id: 10, label: '向量数据库', type: 'know', desc: 'AI记忆底层技术研究',             x: .56, y: .82, size: 12 },
-  { id: 11, label: 'UX设计趋势', type: 'know', desc: '2026年前沿设计方法',            x: .34, y: .26, size: 12 },
-  { id: 12, label: '膝盖注意',   type: 'life', desc: '健身时避免深蹲类动作',           x: .14, y: .40, size: 10 },
-  { id: 13, label: '川菜偏好',   type: 'life', desc: '外出就餐首选',                  x: .30, y: .80, size: 10 },
+  {
+    id:  0, label: '我',        type: 'id',   desc: '核心自我节点',
+    x: .50, y: .50, size: 22, connections: 8,
+    archiveDate: '2024.06', content: '个人身份核心节点，连接所有记忆维度。记录自我认知、价值观与长期目标。',
+  },
+  {
+    id:  1, label: 'AI产品经理', type: 'work', desc: '当前职业方向',
+    x: .73, y: .30, size: 17,
+    archiveDate: '2025.09', content: '确定以AI产品经理为职业方向，专注LLM应用层与记忆个性化领域的产品设计与创新。',
+  },
+  {
+    id:  2, label: '黑客松2026', type: 'work', desc: '当前最重要的工作任务',
+    x: .62, y: .20, size: 15,
+    archiveDate: '2026.05', content: '参加2026年黑客松，选择任务3和任务2并行推进。核心产品：Memory Palace——AI记忆可视化系统。',
+  },
+  {
+    id:  3, label: '记忆宫殿',   type: 'work', desc: '正在设计的核心产品',
+    x: .52, y: .16, size: 14,
+    archiveDate: '2026.05', content: '三层深海隐喻的AI记忆可视化系统。便利贴层（短期）→ 书架层（中期）→ 档案馆层（长期）。核心差异化：衰减系统 + 空间感知。',
+  },
+  {
+    id:  4, label: '力量训练',   type: 'life', desc: '每周3次，避免膝盖负担',
+    x: .27, y: .33, size: 13,
+    archiveDate: '2026.02', content: '每周三次力量训练，周一胸背、周三腿、周五肩臂。膝盖旧伤注意，避免深蹲超过90度，以腿举替代。蛋白质摄入目标：体重(kg)×1.6g/天。',
+  },
+  {
+    id:  5, label: '红烧肉食谱', type: 'life', desc: '拿手菜，五花肉+老抽+冰糖',
+    x: .18, y: .50, size: 11,
+    archiveDate: '2025.11', content: '五花肉切块焯水，冰糖炒糖色，加老抽、料酒、八角，慢火收汁40分钟。关键：糖色要炒到琥珀色，火候不能急。',
+  },
+  {
+    id:  6, label: '简洁偏好',   type: 'id',   desc: '不喜欢废话，直接给结论',
+    x: .76, y: .54, size: 13,
+    archiveDate: '2025.03', content: '沟通偏好：直接给出结论，不喜欢冗长铺垫。信息密度要高，逻辑要清晰。设计审美也倾向简洁、有力。',
+  },
+  {
+    id:  7, label: '知识图谱',   type: 'know', desc: '技术兴趣，正在深入学习',
+    x: .42, y: .74, size: 14,
+    archiveDate: '2026.01', content: '正在学习Neo4j、向量数据库、temporal knowledge graph。理解节点+关系的图数据库结构，研究如何将其应用于AI记忆系统底层。',
+  },
+  {
+    id:  8, label: '王明',       type: 'rel',  desc: '朋友，设计爱好者，下周来访',
+    x: .21, y: .70, size: 12,
+    archiveDate: '2024.08', content: '朋友，对交互设计非常感兴趣。下周五来上海，需要安排川菜馆。上次见面3个月前，聊了很久AI产品趋势。',
+  },
+  {
+    id:  9, label: '早起习惯',   type: 'emo',  desc: '偏好7-9点工作与运动',
+    x: .80, y: .70, size: 11,
+    archiveDate: '2025.07', content: '早上7-9点是精力最充沛的时间段，适合高强度脑力工作和力量训练。已坚持半年以上，形成稳定生物钟。',
+  },
+  {
+    id: 10, label: '向量数据库', type: 'know', desc: 'AI记忆底层技术研究',
+    x: .56, y: .82, size: 12,
+    archiveDate: '2026.01', content: '研究向量相似度搜索，余弦距离决定记忆检索优先级。探索如何用embedding表示记忆片段，实现语义检索而非关键词匹配。',
+  },
+  {
+    id: 11, label: 'UX设计趋势', type: 'know', desc: '2026年前沿设计方法',
+    x: .34, y: .26, size: 12,
+    archiveDate: '2026.03', content: '2026年核心趋势：空间界面设计、AI交互透明度、记忆与个性化体验。参考：Apple Vision Pro的空间感，Notion AI的透明度设计。',
+  },
+  {
+    id: 12, label: '膝盖注意',   type: 'life', desc: '健身时避免深蹲类动作',
+    x: .14, y: .40, size: 10,
+    archiveDate: '2025.10', content: '右膝半月板轻微磨损，运动时需注意。避免深蹲超过90度、全蹲、跳绳等高冲击动作。游泳和椭圆机是安全替代。',
+  },
+  {
+    id: 13, label: '川菜偏好',   type: 'life', desc: '外出就餐首选',
+    x: .30, y: .80, size: 10,
+    archiveDate: '2025.05', content: '偏好川菜，喜欢麻辣鲜香的口味层次。上海推荐：蜀九香、大龙燚。朋友来访时的首选菜系。',
+  },
 ];
 
 export const EDGES = [

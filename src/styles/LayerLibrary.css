@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════
-   LayerLibrary.css — 深渊图书馆层
+   LayerLibrary.css — 深渊档案馆层
    ══════════════════════════════════════ */
 
 #layer-library {
@@ -8,10 +8,9 @@
     radial-gradient(ellipse 100% 60% at 50% 50%, #04020f 0%, #01010a 100%);
 }
 .abyss-particles { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-/* 粒子亮度整体提升，让深渊层更"发光" */
 .ap.bio      { background: rgba(60,200,255,0.75);  box-shadow: 0 0 12px rgba(60,200,255,0.6);  }
 .ap.abyssal  { background: rgba(130,80,255,0.65);  box-shadow: 0 0 16px rgba(100,60,255,0.5);  }
-.ap.ember    { background: rgba(80,220,180,0.55);   box-shadow: 0 0 10px rgba(80,220,180,0.4);  }
+.ap.ember    { background: rgba(80,220,180,0.55);  box-shadow: 0 0 10px rgba(80,220,180,0.4);  }
 @keyframes apFloat {
   0%   { transform: translate(0,0); opacity: var(--o1,0.1); }
   100% { transform: translate(var(--tx,20px),var(--ty,-30px)); opacity: var(--o2,0.55); }
@@ -47,11 +46,14 @@
   padding: 10px 14px; cursor: pointer; transition: all .3s; font-size: 14px;
 }
 .lib-search-btn:hover { background: rgba(130,100,255,0.4); }
+
+/* ── 分类标签（右侧，替换原 legend）── */
 .lib-legend {
   position: absolute; right: 28px; top: 50%; transform: translateY(-50%);
   display: flex; flex-direction: column; gap: 4px; pointer-events: all;
-  background: rgba(4,2,16,0.8); border: 1px solid rgba(130,100,255,0.15);
+  background: rgba(4,2,16,0.85); border: 1px solid rgba(130,100,255,0.15);
   border-radius: 14px; padding: 14px 12px; backdrop-filter: blur(20px);
+  z-index: 20;
 }
 .ll-item {
   display: flex; align-items: center; gap: 9px;
@@ -62,7 +64,9 @@
 .ll-item:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.8); }
 .ll-item.active-filter { border-color: var(--fc); color: #fff; background: rgba(255,255,255,0.06); }
 .ll-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-.lib-timeline { position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%); width: min(520px,78vw); pointer-events: all; }
+
+/* ── 时间轴 ── */
+.lib-timeline { position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%); width: min(520px,78vw); pointer-events: all; z-index: 20; }
 .lt-label { font-family: var(--font-m); font-size: 10px; color: rgba(255,255,255,0.2); text-align: center; margin-bottom: 10px; letter-spacing: .12em; }
 .lt-track { position: relative; height: 4px; background: rgba(130,100,255,0.12); border-radius: 2px; cursor: pointer; border: 1px solid rgba(130,100,255,0.15); }
 .lt-fill  { height: 100%; background: linear-gradient(90deg,rgba(130,100,255,0.9),rgba(80,220,180,0.9)); border-radius: 2px; box-shadow: 0 0 8px rgba(130,100,255,0.4); }
@@ -74,6 +78,8 @@
 }
 .lt-ticks { display: flex; justify-content: space-between; margin-top: 8px; }
 .lt-tick  { font-family: var(--font-m); font-size: 9px; color: rgba(255,255,255,0.2); letter-spacing: .04em; }
+
+/* ── Tooltip ── */
 .node-tooltip {
   position: fixed; background: rgba(4,2,20,0.97);
   border: 1px solid rgba(130,100,255,0.25); border-radius: 14px;
@@ -84,4 +90,127 @@
 .nt-label { font-family: var(--font-d); font-size: 14px; font-weight: 700; margin-bottom: 5px; color: #fff; }
 .nt-type  { font-family: var(--font-m); font-size: 10px; letter-spacing: .1em; margin-bottom: 10px; }
 .nt-desc  { font-size: 11px; color: rgba(255,255,255,0.45); line-height: 1.6; margin-bottom: 10px; }
-.nt-conns { font-family: var(--font-m); font-size: 10px; color: rgba(255,255,255,0.2); }
+.nt-conns { font-family: var(--font-m); font-size: 10px; color: rgba(255,255,255,0.2); margin-bottom: 8px; }
+.nt-hint  {
+  font-family: var(--font-m); font-size: 9px; letter-spacing: .08em;
+  color: rgba(130,100,255,0.6); border-top: 1px solid rgba(130,100,255,0.15);
+  padding-top: 8px; text-align: center;
+}
+
+/* ══════════════════════════════════════
+   档案卡片浮层 — ArchiveCard
+   ══════════════════════════════════════ */
+.archive-card-overlay {
+  position: fixed; inset: 0; z-index: 900;
+  background: rgba(2,2,14,0.75);
+  backdrop-filter: blur(16px);
+  display: flex; align-items: center; justify-content: center;
+  animation: acOverlayIn .25s ease forwards;
+}
+@keyframes acOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+
+.archive-card {
+  position: relative;
+  width: min(520px, 90vw);
+  background: rgba(6,4,20,0.98);
+  border: 1px solid rgba(130,100,255,0.2);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow:
+    0 32px 80px rgba(0,0,0,0.85),
+    0 0 0 1px rgba(255,255,255,0.04),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  animation: acCardIn .35s cubic-bezier(.34,1.4,.64,1) forwards;
+}
+@keyframes acCardIn {
+  from { opacity: 0; transform: scale(0.9) translateY(24px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* 左侧彩色装饰条 */
+.ac-left-strip {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  border-radius: 16px 0 0 16px;
+}
+
+/* 顶部编号条 */
+.ac-topbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 20px 14px 22px;
+  border-bottom: 1px solid;
+  background: rgba(255,255,255,0.02);
+}
+.ac-file-icon { font-size: 16px; }
+.ac-id-block  { display: flex; flex-direction: column; gap: 1px; }
+.ac-id-label  { font-family: var(--font-m); font-size: 8px; letter-spacing: .18em; color: rgba(255,255,255,0.25); text-transform: uppercase; }
+.ac-id-num    { font-family: var(--font-m); font-size: 13px; font-weight: 700; letter-spacing: .06em; }
+.ac-type-badge {
+  margin-left: 8px; padding: 3px 10px;
+  font-family: var(--font-m); font-size: 9px; letter-spacing: .12em;
+  border-radius: 20px; border: 1px solid;
+}
+.ac-close {
+  margin-left: auto; background: none; border: none; cursor: pointer;
+  font-size: 14px; color: rgba(255,255,255,0.3);
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+}
+.ac-close:hover { background: rgba(255,80,80,0.12); color: rgba(255,100,100,0.9); }
+
+/* 主体 */
+.ac-body { padding: 22px 24px 18px 24px; }
+
+.ac-title-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.ac-node-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.ac-title     { font-family: var(--font-d); font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -.02em; }
+
+.ac-divider { height: 1px; margin: 14px 0; border-radius: 1px; }
+
+.ac-meta-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 14px;
+}
+.ac-meta-item { display: flex; flex-direction: column; gap: 4px; }
+.ac-meta-label {
+  font-family: var(--font-m); font-size: 8px; letter-spacing: .16em;
+  color: rgba(255,255,255,0.25); text-transform: uppercase;
+}
+.ac-meta-val {
+  font-family: var(--font-m); font-size: 12px; color: rgba(255,255,255,0.75); letter-spacing: .02em;
+}
+
+.ac-connected { margin-bottom: 14px; }
+.ac-connected-tags {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px;
+}
+.ac-conn-tag {
+  font-family: var(--font-m); font-size: 10px; letter-spacing: .04em;
+  padding: 3px 9px; border-radius: 20px;
+  background: rgba(130,100,255,0.1); border: 1px solid rgba(130,100,255,0.25);
+  color: rgba(180,160,255,0.8);
+}
+
+.ac-content-block { margin-top: 4px; }
+.ac-content-text {
+  margin-top: 8px; font-size: 13px; line-height: 1.75;
+  color: rgba(255,255,255,0.55); font-family: var(--font-b);
+}
+
+/* 底部操作 */
+.ac-footer {
+  display: flex; gap: 8px; padding: 14px 24px 18px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.ac-btn {
+  flex: 1; padding: 9px 12px;
+  font-family: var(--font-m); font-size: 10px; letter-spacing: .1em;
+  text-align: center; cursor: pointer; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1); background: transparent;
+  color: rgba(255,255,255,0.35);
+  transition: all .2s;
+  clip-path: polygon(5px 0%,100% 0%,100% calc(100% - 5px),calc(100% - 5px) 100%,0% 100%,0% 5px);
+}
+.ac-btn:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.2); }
+.ac-btn.mark  { flex: 1.4; }
+.ac-btn.mark:hover { background: rgba(255,215,61,0.07); color: rgba(255,215,61,0.9); }
+.ac-btn.del:hover  { background: rgba(255,80,80,0.08); color: rgba(255,100,100,0.8); border-color: rgba(255,80,80,0.3); }

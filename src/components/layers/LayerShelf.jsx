@@ -4,10 +4,9 @@ import { BOOK_STAGE_DURATION } from '../../utils/decay';
 
 const BOOK_DECAY_STAGES = ['fresh', 'cooling', 'fading', 'critical'];
 
-// 静态模式下各衰减阶段进度条的初始显示比例（仅用于视觉呈现）
+// 静态模式下各衰减阶段进度条初始显示比例
 const STATIC_PROGRESS = { fresh: 0.15, cooling: 0.55, fading: 0.80, critical: 1.0 };
 
-// 保留的 Toast：仅归档和销毁这两个用户主动操作
 function showToast(msg, col = 'rgba(80,220,180,0.9)') {
   const t = document.createElement('div');
   t.className = 'toast'; t.textContent = msg; t.style.color = col;
@@ -23,13 +22,11 @@ function makeDust(decay) {
   ).join('');
 }
 
-// ── 动态模式下的书本计时器 ──
+// ── 动态模式书本计时器 ──
 function runBookTimer(el) {
   function tick() {
     if (!el.isConnected) return;
-    const stage    = el.dataset.stage;
-    if (stage === 'critical') return;
-    // 如果已被暂停（静态模式），停止走动
+    if (el.dataset.stage === 'critical') return;
     if (el.dataset.paused === 'true') return;
     const elapsed  = Date.now() - parseInt(el.dataset.stageStart);
     const duration = parseInt(el.dataset.stageMs);
@@ -51,7 +48,6 @@ function advanceBookStage(el) {
   el.dataset.stage      = next;
   el.dataset.stageStart = Date.now();
   el.dataset.stageMs    = BOOK_STAGE_DURATION[next] || (12000 + Math.random() * 6000);
-  // 删除 Toast：书本阶段推进不再弹提示，视觉变化本身已是反馈
   if (next === 'cooling' || next === 'fading') {
     const d = document.createElement('div'); d.className = 'dust';
     d.style.cssText = `left:${45 + Math.random() * 20}%;top:0;--dur:${6 + Math.random() * 4}s;--del:0s;--dx:${-3 + Math.random() * 6}px`;
@@ -69,7 +65,6 @@ function advanceBookStage(el) {
   }
 }
 
-// 为书本添加进度条并根据模式决定是否启动计时
 function initBookDecay(el, i, isDemoMode) {
   const initDecay = el.dataset.initDecay || 'fresh';
   el.dataset.stage      = initDecay;
@@ -85,7 +80,6 @@ function initBookDecay(el, i, isDemoMode) {
   const fill = prog.querySelector('.bdp-fill');
 
   if (initDecay === 'critical') {
-    // critical 书本进度条始终显示满格红色
     fill.style.width = '100%';
     fill.style.background = 'rgba(255,80,80,0.7)';
     fill.style.animation = 'critFill 1.8s ease-in-out infinite';
@@ -93,10 +87,8 @@ function initBookDecay(el, i, isDemoMode) {
   }
 
   if (isDemoMode) {
-    // 动态模式：启动计时器
     runBookTimer(el);
   } else {
-    // 静态模式：显示固定比例，不走动
     const staticPct = STATIC_PROGRESS[initDecay] || 0.15;
     fill.style.width = (staticPct * 100) + '%';
   }
@@ -106,7 +98,7 @@ export default function LayerShelf({ isDemoMode }) {
   const inited  = useRef(false);
   const [openBook, setOpenBook] = useState(null);
 
-  // ── 初始化：只跑一次 ──
+  // ── 初始化 ──
   useEffect(() => {
     if (inited.current) return;
     inited.current = true;
@@ -120,7 +112,7 @@ export default function LayerShelf({ isDemoMode }) {
       const el = document.createElement('div');
       el.className = `book ${b.decay}`;
       el.dataset.idx       = i;
-      el.dataset.initDecay = b.decay; // 记录初始衰减状态，供后续 isDemoMode 切换时用
+      el.dataset.initDecay = b.decay;
       el.style.height = b.h + 'px';
       el.style.setProperty('--book-h', b.h + 'px');
       el.innerHTML = `
@@ -134,15 +126,14 @@ export default function LayerShelf({ isDemoMode }) {
         <div class="book-card">
           <div class="bc-title">${b.title}</div>
           <div class="bc-summary">${b.summary}</div>
-          <div class="bc-tags">${b.tags.map(t => `<span class="bc-tag" style="border-color:${TAG_COLORS[b.tag]}50;color:${TAG_COLORS[b.tag]}">${t}</span>`).join('')}</div>
           <div class="bc-actions">
-            <div class="bc-btn archive" data-archive="${i}">↑ 归档</div>
-            <div class="bc-btn burn" data-burn="${i}">🔥 销毁</div>
+            <div class="bc-btn archive" data-archive="${i}" title="归档至档案馆">↑</div>
+            <div class="bc-btn burn"    data-burn="${i}"    title="销毁记忆">🔥</div>
+            <div class="bc-btn open"    data-open="${i}"    title="打开查阅">⬜</div>
           </div>
         </div>`;
       rows[b.row].appendChild(el);
 
-      // 初始化进度条（静态模式）
       initBookDecay(el, i, false);
 
       // 点击书脊 → 打开书页
@@ -151,7 +142,7 @@ export default function LayerShelf({ isDemoMode }) {
         setOpenBook(BOOKS[i]);
       });
 
-      // hover card
+      // hover card（左弹）
       let closeTimer = null;
       const openCard  = () => { clearTimeout(closeTimer); el.classList.add('card-open', 'lift-hover'); };
       const closeCard = () => { closeTimer = setTimeout(() => el.classList.remove('card-open', 'lift-hover'), 120); };
@@ -168,7 +159,7 @@ export default function LayerShelf({ isDemoMode }) {
         el.style.transform  = 'translateY(-24px) scale(0.7)';
         el.style.opacity    = '0';
         setTimeout(() => el.remove(), 800);
-        showToast('📖 已归档至档案馆'); // 保留：用户主动操作需要确认
+        showToast('📖 已归档至档案馆');
       });
 
       // 销毁按钮
@@ -185,24 +176,27 @@ export default function LayerShelf({ isDemoMode }) {
         el.style.opacity    = '0';
         el.style.transform  = 'scale(0)';
         setTimeout(() => el.remove(), 500);
-        showToast('🔥 记忆已销毁', 'var(--tag-rel)'); // 保留：破坏性操作需要确认
+        showToast('🔥 记忆已销毁', 'var(--tag-rel)');
+      });
+
+      // 打开按钮（同书脊）
+      card.querySelector('[data-open]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        setOpenBook(BOOKS[i]);
       });
     });
   }, []);
 
-  // ── isDemoMode 变化：切换所有书本的计时器状态 ──
+  // ── isDemoMode 切换 ──
   useEffect(() => {
     const bookEls = Array.from(document.querySelectorAll('.book[data-init-decay]'));
     bookEls.forEach(el => {
-      if (el.dataset.stage === 'critical') return; // critical 不受影响
-
+      if (el.dataset.stage === 'critical') return;
       if (isDemoMode) {
-        // 从静态切换到动态：记录切换时刻为新的 stageStart，开始计时
         el.dataset.paused     = 'false';
         el.dataset.stageStart = Date.now();
         runBookTimer(el);
       } else {
-        // 从动态切换回静态：标记暂停，进度条停在当前位置（tick 内检查 paused 会自动停止）
         el.dataset.paused = 'true';
       }
     });
@@ -232,7 +226,10 @@ export default function LayerShelf({ isDemoMode }) {
         else { b.style.opacity = '.2'; b.style.transition = 'opacity .5s'; }
       }
     });
-    // 删除 Toast：书本弹出的视觉效果本身已是充分反馈
+    // 静态模式：5秒后自动重置
+    if (!isDemoMode) {
+      setTimeout(() => triggerScene('reset'), 5000);
+    }
   }
 
   return (
@@ -248,9 +245,9 @@ export default function LayerShelf({ isDemoMode }) {
           <div className="bookshelf" id="bookshelf" />
           <div className="shelf-overlay" id="shelf-overlay" />
           <div className="shelf-trigger">
-            <div className="trigger-pill primary" onClick={() => triggerScene('cooking')}>🍳 想做饭了</div>
+            <div className="trigger-pill primary"   onClick={() => triggerScene('cooking')}>🍳 想做饭了</div>
             <div className="trigger-pill secondary" onClick={() => triggerScene('work')}>💼 工作模式</div>
-            <div className="trigger-pill reset" onClick={() => triggerScene('reset')}>重置</div>
+            <div className="trigger-pill reset"     onClick={() => triggerScene('reset')}>重置</div>
           </div>
         </div>
       </div>
@@ -273,9 +270,20 @@ function BookPage({ book, onClose }) {
   const [entries, setEntries] = useState(book.entries || []);
   const tagColor = TAG_COLORS[book.tag] || '#fff';
 
+  // 打开书页时锁住背景导航
+  useEffect(() => {
+    const ocean = document.getElementById('ocean');
+    if (ocean) ocean.style.overflow = 'hidden';
+    const blockWheel = e => e.stopPropagation();
+    document.addEventListener('wheel', blockWheel, { capture: true });
+    return () => {
+      if (ocean) ocean.style.overflow = '';
+      document.removeEventListener('wheel', blockWheel, { capture: true });
+    };
+  }, []);
+
   function deleteEntry(id) {
     setEntries(prev => prev.filter(e => e.id !== id));
-    // 删除 Toast：条目已从列表消失，视觉反馈充分
   }
   function toggleImportant(id) {
     setEntries(prev => prev.map(e => e.id === id ? { ...e, important: !e.important } : e));
@@ -315,13 +323,13 @@ function BookPage({ book, onClose }) {
           <div className="bp-actions">
             <div className="bp-action-btn archive" onClick={() => {
               onClose();
-              showToast('📚 已压入档案馆'); // 保留：用户主动操作
+              showToast('📚 已压入档案馆');
             }}>
               ↓ 压入档案馆
             </div>
             <div className="bp-action-btn burn" onClick={() => {
               onClose();
-              showToast('🔥 书籍已销毁', 'var(--tag-rel)'); // 保留：破坏性操作
+              showToast('🔥 书籍已销毁', 'var(--tag-rel)');
             }}>
               🔥 销毁
             </div>

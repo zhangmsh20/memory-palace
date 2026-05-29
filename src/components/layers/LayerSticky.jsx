@@ -25,7 +25,6 @@ function stopNoteFloat(el) {
   floatTimers.delete(el);
 }
 
-// ── Toast：仅保留有实质意义的两种 ──
 function showToast(msg, col = 'rgba(80,220,180,0.9)') {
   const t = document.createElement('div');
   t.className = 'toast'; t.textContent = msg; t.style.color = col;
@@ -33,16 +32,71 @@ function showToast(msg, col = 'rgba(80,220,180,0.9)') {
   setTimeout(() => t.remove(), 2200);
 }
 
+// 进度条颜色和静态初始值（合并 cooling/fading 为两档）
+const STATIC_PROG = { fresh: 0.45, cooling: 0.72, fading: 0.72, critical: 1.0 };
+
+function getProgColor(decay) {
+  return {
+    fresh:    'rgba(80,220,180,0.75)',
+    cooling:  'rgba(255,200,80,0.75)',
+    fading:   'rgba(255,140,60,0.75)',
+    critical: 'rgba(255,70,70,0.8)',
+  }[decay] || 'rgba(255,255,255,0.3)';
+}
+
+// 给便利贴注入进度条
+function injectProgress(el, decay) {
+  const prog = document.createElement('div');
+  prog.className = 'sn-prog';
+  const fill = document.createElement('div');
+  fill.className = 'sn-prog-fill';
+  fill.style.width   = (STATIC_PROG[decay] || 0.45) * 100 + '%';
+  fill.style.background = getProgColor(decay);
+  if (decay === 'critical') fill.style.animation = 'snCritFill 1.8s ease-in-out infinite';
+  prog.appendChild(fill);
+  el.appendChild(prog);
+  return fill;
+}
+
+// 动态模式下启动进度条动画
+function startProgTimer(el, fill) {
+  const DURATIONS = { fresh: 30000, cooling: 22000, fading: 18000 };
+  const decay = el.dataset.decay;
+  if (decay === 'critical') return;
+  const dur = DURATIONS[decay] || 20000;
+  const start = Date.now();
+  const startPct = STATIC_PROG[decay] || 0.45;
+
+  function tick() {
+    if (!el.isConnected) return;
+    if (el.dataset.progPaused === 'true') return;
+    const elapsed = Date.now() - start;
+    const pct = Math.min(1, startPct + (1 - startPct) * (elapsed / dur));
+    fill.style.width = (pct * 100) + '%';
+    if (pct < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
 function advanceDecayEl(el) {
   const cur  = el.dataset.decay;
-  const next = { fresh: 'cooling', cooling: 'fading', fading: 'critical' }[cur];
+  const next = { fresh: 'cooling', cooling: 'critical', fading: 'critical' }[cur];
   if (!next) return;
   el.dataset.decay = next;
   ['fresh','cooling','fading','critical'].forEach(d => el.classList.remove('decay-' + d));
   el.classList.add('decay-' + next);
   const tEl = el.querySelector('.s-time');
   if (tEl) tEl.textContent = decayLabel(next);
-  // 衰减状态变化不再弹 Toast，视觉变化本身即是反馈
+
+  // 更新进度条颜色和状态
+  const fill = el.querySelector('.sn-prog-fill');
+  if (fill) {
+    fill.style.background = getProgColor(next);
+    if (next === 'critical') {
+      fill.style.width = '100%';
+      fill.style.animation = 'snCritFill 1.8s ease-in-out infinite';
+    }
+  }
 }
 
 function animDissolve(el) {
@@ -59,7 +113,6 @@ function animDissolve(el) {
     el.style.filter     = 'saturate(0) brightness(0.5)';
   });
   setTimeout(() => el.remove(), 2000);
-  // 删除 Toast：消散动效本身已足够清晰
 }
 
 function spawnBubble(board) {
@@ -83,7 +136,7 @@ function spawnBubble(board) {
   setTimeout(() => el.remove(), (dur + del) * 1000 + 200);
 }
 
-function spawnNote(d, board) {
+function spawnNote(d, board, isDemoMode = false) {
   const el    = document.createElement('div');
   el.className = `sticky-note ${d.cls} decay-${d.decay}`;
   el.dataset.decay = d.decay;
@@ -97,6 +150,12 @@ function spawnNote(d, board) {
   el.style.cssText = `position:absolute;left:0;top:0;transform:translate(${px}px,${py}px) rotate(${d.r}deg);will-change:transform;z-index:10;`;
   el.innerHTML = `<div class="s-pin"></div><div class="s-badge"><div class="s-dot"></div>${d.tag}</div>${d.text}<div class="s-time">${decayLabel(d.decay)}</div>`;
   board.appendChild(el);
+
+  // 注入进度条
+  const fill = injectProgress(el, d.decay);
+  el.dataset.progPaused = isDemoMode ? 'false' : 'true';
+  if (isDemoMode && d.decay !== 'critical') startProgTimer(el, fill);
+
   startNoteFloat(el, Math.random() * 10);
   setupDrag(el, { showToast, startNoteFloat, stopNoteFloat });
 }
@@ -116,21 +175,91 @@ function createNoteFromInput(text, board) {
   el.style.cssText = `position:absolute;left:0;top:0;transform:translate(${px}px,${py}px) rotate(${r}deg) scale(0.3);opacity:0;will-change:transform;z-index:100;transition:transform .4s cubic-bezier(.34,1.56,.64,1),opacity .3s ease;`;
   el.innerHTML = `<div class="s-pin"></div><div class="s-badge"><div class="s-dot"></div>${tags[cls]}</div>${text}<div class="s-time">刚刚</div>`;
   board.appendChild(el);
+
+  const fill = injectProgress(el, 'fresh');
+  el.dataset.progPaused = 'true';
+
   requestAnimationFrame(() => requestAnimationFrame(() => {
     el.style.transform = `translate(${px}px,${py}px) rotate(${r}deg) scale(1)`;
     el.style.opacity   = '1';
   }));
   setTimeout(() => { el.style.transition = ''; startNoteFloat(el, Math.random() * 10); }, 450);
   setupDrag(el, { showToast, startNoteFloat, stopNoteFloat });
-  showToast('✦ 便利贴已生成'); // 保留：用户主动创建，需要确认反馈
+  showToast('✦ 便利贴已生成');
+
+  // 每次新建便利贴后检查是否需要合并提示
+  setTimeout(() => checkMergeHint(board), 100);
+}
+
+// ── 合并升级提示条 ──
+function checkMergeHint(board) {
+  const notes = Array.from(board.querySelectorAll('.sticky-note'));
+  const tagCount = {};
+  notes.forEach(n => {
+    const badge = n.querySelector('.s-badge');
+    if (!badge) return;
+    // 取 badge 文字（去掉 s-dot 的空白）
+    const tag = badge.textContent.trim();
+    if (tag) tagCount[tag] = (tagCount[tag] || 0) + 1;
+  });
+
+  const hit = Object.entries(tagCount).find(([, count]) => count >= 3);
+  let hint   = document.getElementById('merge-hint');
+
+  if (hit) {
+    if (!hint) {
+      hint = document.createElement('div');
+      hint.id = 'merge-hint';
+      hint.className = 'merge-hint';
+      hint.innerHTML = `
+        <span class="mh-icon">✦</span>
+        <span class="mh-text">发现 <strong>${hit[1]}</strong> 条「${hit[0]}」记忆可合并</span>
+        <button class="mh-btn primary" id="merge-confirm">合并升级至书架</button>
+        <button class="mh-btn"         id="merge-ignore">忽略</button>`;
+
+      // 插到 shelf-drop-zone 上方
+      const sdz = document.getElementById('shelf-drop-zone');
+      if (sdz) sdz.parentNode.insertBefore(hint, sdz);
+      else board.appendChild(hint);
+
+      // 动画入场
+      requestAnimationFrame(() => hint.classList.add('visible'));
+
+      document.getElementById('merge-ignore').onclick = () => {
+        hint.classList.remove('visible');
+        setTimeout(() => hint.remove(), 300);
+      };
+      document.getElementById('merge-confirm').onclick = () => {
+        // 触发相关便利贴升级动画
+        notes
+          .filter(n => n.querySelector('.s-badge')?.textContent.trim() === hit[0])
+          .forEach(n => {
+            stopNoteFloat(n);
+            const sx = parseFloat(n.dataset.px) || 0;
+            const sy = parseFloat(n.dataset.py) || 0;
+            const r  = parseFloat(n.dataset.r)  || 0;
+            n.style.transition = 'transform .85s cubic-bezier(.4,0,.2,1),opacity .7s ease,filter .5s ease';
+            n.style.transform  = `translate(${sx}px,${sy + 180}px) rotate(${r + 8}deg) scale(0.3)`;
+            n.style.opacity    = '0';
+            n.style.filter     = 'saturate(2.5) brightness(1.8)';
+            setTimeout(() => n.remove(), 900);
+          });
+        showToast(`📚 「${hit[0]}」记忆已合并升级至书架`, 'rgba(255,180,80,0.9)');
+        hint.classList.remove('visible');
+        setTimeout(() => hint.remove(), 300);
+      };
+    }
+  } else if (hint) {
+    hint.classList.remove('visible');
+    setTimeout(() => hint.remove(), 300);
+  }
 }
 
 export default function LayerSticky({ isDemoMode }) {
   const inited     = useRef(false);
-  // 用 ref 存计时器 ID，方便随时清除
   const timersRef  = useRef({ decay1: null, decay2: null, bubble: null });
 
-  // ── 初始化（只跑一次）：生成便利贴 + 气泡 + 绑定输入 ──
+  // ── 初始化（只跑一次）──
   useEffect(() => {
     if (inited.current) return;
     inited.current = true;
@@ -149,9 +278,12 @@ export default function LayerSticky({ isDemoMode }) {
       board.appendChild(el);
     });
 
-    STICKY_DATA.forEach(d => spawnNote(d, board));
+    STICKY_DATA.forEach(d => spawnNote(d, board, false));
 
-    // 气泡：始终生成（纯视觉，与演示模式无关）
+    // 初始扫描是否满足合并条件（页面加载时就显示）
+    setTimeout(() => checkMergeHint(board), 400);
+
+    // 气泡（纯视觉，始终运行）
     for (let i = 0; i < 14; i++) {
       setTimeout(() => spawnBubble(board), i * 700 + Math.random() * 400);
     }
@@ -169,33 +301,48 @@ export default function LayerSticky({ isDemoMode }) {
     if (send)  send.onclick = doSend;
     if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') doSend(); });
 
-    // 注意：气泡计时器一直跑，cleanup 在组件卸载时处理
-    return () => {
-      clearInterval(timersRef.current.bubble);
-    };
+    return () => { clearInterval(timersRef.current.bubble); };
   }, []);
 
-  // ── isDemoMode 变化时：启动或停止衰减计时器 ──
+  // ── isDemoMode 变化：衰减计时器 + 进度条 ──
   useEffect(() => {
     const board = document.getElementById('sticky-board');
     if (!board) return;
 
     if (isDemoMode) {
-      // 启动衰减
+      // 启动进度条动态走动
+      Array.from(board.querySelectorAll('.sticky-note')).forEach(el => {
+        el.dataset.progPaused = 'false';
+        const fill = el.querySelector('.sn-prog-fill');
+        if (fill && el.dataset.decay !== 'critical') startProgTimer(el, fill);
+      });
+
+      // 衰减计时器
       timersRef.current.decay1 = setInterval(() => {
-        const notes = Array.from(board.querySelectorAll('.sticky-note'));
+        const notes   = Array.from(board.querySelectorAll('.sticky-note'));
         const cooling = notes.filter(n => n.dataset.decay === 'cooling');
-        if (cooling.length) { advanceDecayEl(cooling[Math.floor(Math.random() * cooling.length)]); return; }
+        if (cooling.length) {
+          advanceDecayEl(cooling[Math.floor(Math.random() * cooling.length)]);
+          checkMergeHint(board);
+          return;
+        }
         const fresh = notes.filter(n => n.dataset.decay === 'fresh');
-        if (fresh.length > 2) advanceDecayEl(fresh[fresh.length - 1]);
+        if (fresh.length > 2) {
+          advanceDecayEl(fresh[fresh.length - 1]);
+          checkMergeHint(board);
+        }
       }, 8000);
 
       timersRef.current.decay2 = setInterval(() => {
         const critical = Array.from(board.querySelectorAll('.sticky-note[data-decay="critical"]'));
         if (critical.length) animDissolve(critical[0]);
       }, 20000);
+
     } else {
-      // 停止衰减
+      // 暂停进度条
+      Array.from(board.querySelectorAll('.sticky-note')).forEach(el => {
+        el.dataset.progPaused = 'true';
+      });
       clearInterval(timersRef.current.decay1);
       clearInterval(timersRef.current.decay2);
       timersRef.current.decay1 = null;
@@ -219,7 +366,6 @@ export default function LayerSticky({ isDemoMode }) {
       <div className="sticky-board" id="sticky-board">
         <div id="sticky-motes" />
         <div id="dissolve-zone"><div id="dissolve-zone-label">松手即消散</div></div>
-
         <div id="shelf-drop-zone">
           <div className="sdz-label">↓ 拖至此处 升级至书架</div>
         </div>
@@ -227,9 +373,9 @@ export default function LayerSticky({ isDemoMode }) {
         <div className="decay-legend">
           <div className="dl-legend-title">记忆状态</div>
           <div className="dl-sep" />
-          <div className="dl-row"><div className="dl-swatch s-fresh" /><span className="dl-label">鲜活</span></div>
-          <div className="dl-row"><div className="dl-swatch s-cooling" /><span className="dl-label">冷却</span></div>
-          <div className="dl-row"><div className="dl-swatch s-fading" /><span className="dl-label">褪色</span></div>
+          <div className="dl-row"><div className="dl-swatch s-fresh"    /><span className="dl-label">鲜活</span></div>
+          <div className="dl-row"><div className="dl-swatch s-cooling"  /><span className="dl-label">冷却</span></div>
+          <div className="dl-row"><div className="dl-swatch s-fading"   /><span className="dl-label">褪色</span></div>
           <div className="dl-row"><div className="dl-swatch s-critical" /><span className="dl-label">临界</span></div>
         </div>
       </div>
