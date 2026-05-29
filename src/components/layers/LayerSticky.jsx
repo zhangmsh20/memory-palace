@@ -191,69 +191,156 @@ function createNoteFromInput(text, board) {
   setTimeout(() => checkMergeHint(board), 100);
 }
 
+// ── 合并粒子爆发动画 ──
+function spawnMergeParticles(noteEls) {
+  const targetX = window.innerWidth / 2;
+  const targetY = window.innerHeight * 0.88;
+
+  noteEls.forEach((el, noteIdx) => {
+    const rect = el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+
+    for (let i = 0; i < 6; i++) {
+      const p = document.createElement('div');
+      p.className = 'merge-particle';
+
+      const startX = cx + (-16 + Math.random() * 32);
+      const startY = cy + (-10 + Math.random() * 20);
+      const endDX = targetX - startX + (-20 + Math.random() * 40);
+      const endDY = targetY - startY + (-10 + Math.random() * 20);
+
+      const colors = [
+        'rgba(255,200,80,0.9)',
+        'rgba(255,180,60,0.85)',
+        'rgba(255,220,120,0.9)',
+        'rgba(255,160,60,0.8)',
+      ];
+      const col = colors[Math.floor(Math.random() * colors.length)];
+      const size = 3 + Math.random() * 5;
+      const delay = noteIdx * 0.06 + Math.random() * 0.1;
+      const dur = 0.55 + Math.random() * 0.25;
+
+      p.style.cssText = [
+        `left:${startX}px`, `top:${startY}px`,
+        `width:${size}px`, `height:${size}px`,
+        `background:${col}`,
+        `box-shadow:0 0 ${size * 2}px ${col}`,
+        `--mp-tx:${endDX}px`, `--mp-ty:${endDY}px`,
+        `--mp-dur:${dur}s`, `--mp-del:${delay}s`,
+      ].join(';');
+
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), (delay + dur) * 1000 + 100);
+    }
+  });
+}
+
+// ── 书架区域闪光 ──
+function flashShelfMerge() {
+  const flash = document.createElement('div');
+  flash.className = 'shelf-merge-flash';
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 1300);
+}
+
+// ── 读取便利贴 tag 文字（跳过 s-dot 空节点）──
+function getBadgeTag(note) {
+  const badge = note.querySelector('.s-badge');
+  if (!badge) return '';
+  // childNodes 最后一个是文本节点，s-dot 是第一个子元素
+  const textNode = Array.from(badge.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
+  return textNode ? textNode.textContent.trim() : badge.textContent.trim();
+}
+
 // ── 合并升级提示条 ──
 function checkMergeHint(board) {
   const notes = Array.from(board.querySelectorAll('.sticky-note'));
-  const tagCount = {};
+
+  const tagMap = {};
   notes.forEach(n => {
-    const badge = n.querySelector('.s-badge');
-    if (!badge) return;
-    // 取 badge 文字（去掉 s-dot 的空白）
-    const tag = badge.textContent.trim();
-    if (tag) tagCount[tag] = (tagCount[tag] || 0) + 1;
+    const tag = getBadgeTag(n);
+    if (!tag) return;
+    if (!tagMap[tag]) tagMap[tag] = [];
+    tagMap[tag].push(n);
   });
 
-  const hit = Object.entries(tagCount).find(([, count]) => count >= 3);
-  let hint   = document.getElementById('merge-hint');
+  const hit = Object.entries(tagMap).find(([, els]) => els.length >= 3);
+  let hint = document.getElementById('merge-hint');
 
   if (hit) {
+    const [hitTag, hitEls] = hit;
+
     if (!hint) {
       hint = document.createElement('div');
       hint.id = 'merge-hint';
       hint.className = 'merge-hint';
       hint.innerHTML = `
         <span class="mh-icon">✦</span>
-        <span class="mh-text">发现 <strong>${hit[1]}</strong> 条「${hit[0]}」记忆可合并</span>
+        <span class="mh-text">发现 <strong>${hitEls.length}</strong> 条「${hitTag}」记忆可合并</span>
         <button class="mh-btn primary" id="merge-confirm">合并升级至书架</button>
-        <button class="mh-btn"         id="merge-ignore">忽略</button>`;
+        <button class="mh-btn" id="merge-ignore">忽略</button>
+      `;
 
-      // 插到 shelf-drop-zone 上方
       const sdz = document.getElementById('shelf-drop-zone');
-      if (sdz) sdz.parentNode.insertBefore(hint, sdz);
+      if (sdz && sdz.parentNode) sdz.parentNode.insertBefore(hint, sdz);
       else board.appendChild(hint);
 
-      // 动画入场
-      requestAnimationFrame(() => hint.classList.add('visible'));
+      requestAnimationFrame(() => requestAnimationFrame(() => hint.classList.add('visible')));
 
       document.getElementById('merge-ignore').onclick = () => {
         hint.classList.remove('visible');
-        setTimeout(() => hint.remove(), 300);
+        setTimeout(() => hint.remove(), 350);
       };
+
       document.getElementById('merge-confirm').onclick = () => {
-        // 触发相关便利贴升级动画
-        notes
-          .filter(n => n.querySelector('.s-badge')?.textContent.trim() === hit[0])
-          .forEach(n => {
+        const targetNotes = Array.from(board.querySelectorAll('.sticky-note'))
+          .filter(n => getBadgeTag(n) === hitTag);
+
+        const confirmBtn = document.getElementById('merge-confirm');
+        if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = '合并中…'; }
+
+        // 粒子爆发
+        spawnMergeParticles(targetNotes);
+
+        // 便利贴依次飞向书架
+        targetNotes.forEach((n, i) => {
+          setTimeout(() => {
             stopNoteFloat(n);
             const sx = parseFloat(n.dataset.px) || 0;
             const sy = parseFloat(n.dataset.py) || 0;
             const r  = parseFloat(n.dataset.r)  || 0;
-            n.style.transition = 'transform .85s cubic-bezier(.4,0,.2,1),opacity .7s ease,filter .5s ease';
-            n.style.transform  = `translate(${sx}px,${sy + 180}px) rotate(${r + 8}deg) scale(0.3)`;
+            const targetLeft = window.innerWidth / 2 - sx;
+            const targetDown = window.innerHeight * 0.85 - sy;
+
+            n.style.transition = 'transform 0.75s cubic-bezier(.4,0,.2,1), opacity 0.65s ease, filter 0.5s ease';
+            n.style.transform  = `translate(${sx + targetLeft * 0.6}px,${sy + targetDown}px) rotate(${r + (-12 + Math.random() * 24)}deg) scale(0.2)`;
             n.style.opacity    = '0';
-            n.style.filter     = 'saturate(2.5) brightness(1.8)';
-            setTimeout(() => n.remove(), 900);
-          });
-        showToast(`📚 「${hit[0]}」记忆已合并升级至书架`, 'rgba(255,180,80,0.9)');
+            n.style.filter     = 'saturate(2.8) brightness(2.2)';
+            n.style.zIndex     = '200';
+            setTimeout(() => n.remove(), 780);
+          }, i * 80);
+        });
+
+        // 书架闪光
+        setTimeout(() => flashShelfMerge(), targetNotes.length * 80 + 200);
+
+        // toast
+        setTimeout(() => {
+          showToast(`📚 「${hitTag}」记忆已合并升级至书架`, 'rgba(255,200,80,0.95)');
+        }, targetNotes.length * 80 + 350);
+
+        // 关闭提示条
         hint.classList.remove('visible');
-        setTimeout(() => hint.remove(), 300);
+        setTimeout(() => hint.remove(), 350);
       };
     }
   } else if (hint) {
     hint.classList.remove('visible');
-    setTimeout(() => hint.remove(), 300);
+    setTimeout(() => { if (hint.parentNode) hint.remove(); }, 350);
   }
 }
+
 
 export default function LayerSticky({ isDemoMode }) {
   const inited     = useRef(false);

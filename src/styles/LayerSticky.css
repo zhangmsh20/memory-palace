@@ -182,3 +182,178 @@
   animation: pillScan 2s linear infinite; pointer-events: none;
 }
 .sib-send:hover { color: rgba(80,200,255,1); border-color: rgba(80,200,255,0.7); background: rgba(80,200,255,0.1); box-shadow: 0 0 14px rgba(80,200,255,0.2); }
+
+/* ══════════════════════════════════════
+   便利贴流逝进度条
+   ══════════════════════════════════════ */
+.sn-prog {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 0 0 1px 1px;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.sn-prog-fill {
+  height: 100%;
+  width: 45%;
+  border-radius: 0 0 1px 1px;
+  transition: background 0.6s ease, width 0.3s linear;
+}
+
+@keyframes snCritFill {
+  0%, 100% { opacity: 0.45; }
+  50%       { opacity: 1; }
+}
+
+/* ══════════════════════════════════════
+   合并升级提示条
+   ══════════════════════════════════════ */
+.merge-hint {
+  position: absolute;
+  /* 悬浮在 shelf-drop-zone 上方 */
+  bottom: calc(120px + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  background: rgba(6, 4, 22, 0.96);
+  border: 1px solid rgba(255, 180, 80, 0.45);
+  border-radius: 12px;
+  font-family: var(--font-m);
+  font-size: 11px;
+  letter-spacing: .06em;
+  color: rgba(255, 205, 110, 0.9);
+  z-index: 60;
+  white-space: nowrap;
+  backdrop-filter: blur(20px);
+  box-shadow:
+    0 0 28px rgba(255, 180, 80, 0.14),
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .35s ease, transform .35s cubic-bezier(.34, 1.4, .64, 1);
+}
+
+.merge-hint.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: all;
+}
+
+/* 左侧高亮竖条 */
+.merge-hint::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 20%; bottom: 20%;
+  width: 2px;
+  background: linear-gradient(180deg, transparent, rgba(255, 180, 80, 0.9), transparent);
+  border-radius: 2px;
+}
+
+.mh-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px rgba(255, 180, 80, 0.6));
+}
+
+.mh-text {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.mh-text strong {
+  color: rgba(255, 225, 140, 1);
+  font-weight: 700;
+}
+
+.mh-btn {
+  padding: 6px 14px;
+  font-family: var(--font-m);
+  font-size: 10px;
+  letter-spacing: .1em;
+  cursor: pointer;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 180, 80, 0.3);
+  background: transparent;
+  color: rgba(255, 180, 80, 0.75);
+  transition: all .2s;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+.mh-btn::before {
+  content: '';
+  position: absolute;
+  top: -100%; left: 0; right: 0; height: 100%;
+  background: linear-gradient(180deg, transparent, rgba(255, 180, 80, 0.08), transparent);
+  animation: pillScan 2.5s linear infinite;
+  pointer-events: none;
+}
+.mh-btn:hover {
+  background: rgba(255, 180, 80, 0.1);
+  color: rgba(255, 220, 130, 1);
+  border-color: rgba(255, 180, 80, 0.65);
+  box-shadow: 0 0 12px rgba(255, 180, 80, 0.2);
+}
+
+.mh-btn.primary {
+  background: rgba(255, 180, 80, 0.14);
+  color: rgba(255, 215, 120, 0.95);
+  border-color: rgba(255, 180, 80, 0.55);
+  box-shadow: 0 0 10px rgba(255, 180, 80, 0.1);
+}
+.mh-btn.primary:hover {
+  background: rgba(255, 180, 80, 0.26);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(255, 180, 80, 0.28);
+}
+
+/* ══════════════════════════════════════
+   合并升级动画：便利贴聚合粒子爆发
+   ══════════════════════════════════════ */
+
+/* 升级成功时便利贴飞向书架的拖尾 */
+@keyframes mergePromote {
+  0%   { opacity: 1; filter: saturate(2) brightness(1.5); }
+  60%  { opacity: 0.8; filter: saturate(3) brightness(2); }
+  100% { opacity: 0; filter: saturate(0) brightness(0.5); }
+}
+
+/* 合并粒子：从便利贴位置向中心聚合 */
+.merge-particle {
+  position: fixed;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9000;
+  animation: mergeParticle var(--mp-dur, 0.7s) var(--mp-del, 0s) cubic-bezier(.4, 0, .2, 1) forwards;
+}
+
+@keyframes mergeParticle {
+  0%   { opacity: 0.9; transform: translate(0, 0) scale(1); }
+  60%  { opacity: 0.7; }
+  100% { opacity: 0;   transform: translate(var(--mp-tx, 0px), var(--mp-ty, 0px)) scale(0.2); }
+}
+
+/* 合并成功后的书架层新书入场光晕 */
+.shelf-merge-flash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 8000;
+  background: radial-gradient(ellipse 60% 30% at 50% 85%, rgba(255, 180, 80, 0.18) 0%, transparent 70%);
+  animation: mergeFlash 1.2s ease-out forwards;
+}
+
+@keyframes mergeFlash {
+  0%   { opacity: 0; }
+  20%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+

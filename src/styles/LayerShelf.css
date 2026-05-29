@@ -43,12 +43,23 @@
 .book.lift-hover { transform: translateY(-16px) scale(1.05) !important; z-index: 30; }
 .book-spine {
   border-radius: 2px 0 0 2px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  position: relative; overflow: hidden;
-  writing-mode: vertical-rl; text-orientation: mixed;
-  padding: 14px 0; gap: 10px;
-  border-right: 1px solid rgba(0,0,0,0.5); min-width: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  /* 竖排文字 */
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  padding: 14px 0;
+  gap: 10px;
+  border-right: 1px solid rgba(0, 0, 0, 0.5);
+  min-width: 28px;
+  /* 修复：确保内容水平居中 */
+  text-align: center;
 }
+
 .book-spine::before {
   content: ''; position: absolute; inset: 0;
   background: linear-gradient(90deg,rgba(255,255,255,0.13) 0%,rgba(255,255,255,0.03) 30%,rgba(0,0,0,0.12) 100%);
@@ -60,15 +71,24 @@
 .book.critical .book-spine::after { background: rgba(100,90,70,0.1); }
 
 .book-title {
-  font-family: var(--font-d); font-size: 11px; font-weight: 700;
+  font-family: var(--font-d);
+  font-size: 11px;
+  font-weight: 700;
   color: #fff;
-  text-shadow: 0 1px 6px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.5);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8), 0 0 12px rgba(0, 0, 0, 0.5);
   letter-spacing: .08em;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   max-width: calc(var(--book-h, 120px) - 32px);
-  padding: 0 2px;
-  position: relative; z-index: 1;
+  /* 关键修复：移除 padding，改用 margin auto 让文字在书脊内真正居中 */
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+  /* 让竖排文字在书脊宽度方向居中 */
+  align-self: center;
 }
+
 .book-tag-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .book-cover { position: absolute; right: -18px; top: 0; bottom: 0; width: 18px; border-radius: 0 2px 2px 0; background: inherit; filter: brightness(0.55); }
 .book-top   { position: absolute; top: -4px; left: 0; right: -18px; height: 4px; border-radius: 2px 2px 0 0; background: inherit; filter: brightness(1.35); }
@@ -81,17 +101,34 @@
 .book.critical .book-spine { filter: saturate(0.08) brightness(0.45); }
 .book.critical { transform: rotate(-1.8deg) translateY(4px); }
 
-/* 书架衰减进度条 */
+/* ══════════════════════════════════════
+   [PATCH] book-decay-prog 修复：确保在书脊竖排布局中可见
+   ══════════════════════════════════════ */
 .book-decay-prog {
-  position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
-  background: rgba(255,255,255,0.06); overflow: hidden;
+  position: absolute;
+  /* 书脊是竖排，进度条沿书脊宽度方向（水平）显示在底部 */
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  /* 重置 writing-mode，让进度条本身保持水平 */
+  writing-mode: horizontal-tb;
 }
+
 .bdp-fill {
-  height: 100%; width: 0%;
-  background: linear-gradient(90deg, rgba(80,220,180,0.8), rgba(255,200,80,0.5));
-  transition: background .5s;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, rgba(80, 220, 180, 0.8), rgba(255, 200, 80, 0.5));
+  transition: background .5s, width .3s linear;
 }
-@keyframes critFill { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+@keyframes critFill {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1; }
+}
+
 
 /* 尘埃 */
 .dust {
@@ -111,29 +148,40 @@
    ══════════════════════════════════════ */
 .book-card {
   position: absolute;
-  /* 左侧弹出：从书脊右边缘向左展开 */
-  bottom: 0;
-  right: calc(100% + 8px);
-  left: auto;
+  /* ★ 改为上方弹出，避免干扰书本 bounding box */
+  bottom: calc(100% + 10px);
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%) scale(0.9) translateY(8px);
+  transform-origin: bottom center;
+
   width: 210px;
-  transform-origin: right bottom;
-  transform: scale(0.88) translateX(6px);
-  background: rgba(8,8,28,0.97);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 14px; padding: 16px 18px;
-  opacity: 0; pointer-events: none;
-  transition: all .22s cubic-bezier(.34,1.56,.64,1);
-  z-index: 100; backdrop-filter: blur(24px);
-  box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+  background: rgba(8, 8, 28, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 16px 18px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all .22s cubic-bezier(.34, 1.56, .64, 1);
+  z-index: 100;
+  backdrop-filter: blur(24px);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7);
 }
-/* 桥接区防止 hover 中断 */
+/* ★ 关键：把桥接区改到下方（因为卡片在书本上方，鼠标从书本移向卡片是向上移动） */
 .book-card::after {
-  content: ''; position: absolute; top: -20px; right: -20px;
-  bottom: -20px; left: -20px; z-index: -1;
+  content: '';
+  position: absolute;
+  top: -8px;       /* 向上少量延伸（鼠标进入卡片前的过渡区） */
+  right: -20px;
+  bottom: -28px;   /* ★ 向下延伸桥接到书脊 */
+  left: -20px;
+  z-index: -1;
 }
+
 .book.card-open .book-card {
-  opacity: 1; pointer-events: all;
-  transform: scale(1) translateX(0);
+  opacity: 1;
+  pointer-events: all;
+  transform: translateX(-50%) scale(1) translateY(0);
 }
 
 .bc-title   { font-family: var(--font-d); font-size: 13px; font-weight: 700; margin-bottom: 8px; }
