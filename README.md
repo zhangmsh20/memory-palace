@@ -1,16 +1,224 @@
-# React + Vite
+<div align="center">
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+```
+███╗   ███╗███████╗███╗   ███╗ ██████╗ ██████╗ ██╗   ██╗
+████╗ ████║██╔════╝████╗ ████║██╔═══██╗██╔══██╗╚██╗ ██╔╝
+██╔████╔██║█████╗  ██╔████╔██║██║   ██║██████╔╝ ╚████╔╝ 
+██║╚██╔╝██║██╔══╝  ██║╚██╔╝██║██║   ██║██╔══██╗  ╚██╔╝  
+██║ ╚═╝ ██║███████╗██║ ╚═╝ ██║╚██████╔╝██║  ██║   ██║   
+╚═╝     ╚═╝╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   
 
-Currently, two official plugins are available:
+P A L A C E  ·  深渊版  ·  ABYSS EDITION
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+**AI 记住了你什么？现在你可以看见了。**
 
-## React Compiler
+*将抽象的 AI 记忆实体化——打破黑盒，以深海三层架构可视化你在 AI 眼中的样子*
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+[![Demo](https://img.shields.io/badge/Live_Demo-memory--palace--dun.vercel.app-9b6bff?style=flat-square&logo=vercel)](https://memory-palace-dun.vercel.app/)
+[![React](https://img.shields.io/badge/React-18-4a9eff?style=flat-square&logo=react)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-5-43d9a0?style=flat-square&logo=vite)](https://vitejs.dev/)
+[![License](https://img.shields.io/badge/License-MIT-ff9f43?style=flat-square)](LICENSE)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+</div>
+
+---
+
+## 核心主张
+
+今天，AI 的记忆往往被锁在冰冷的向量数据库黑盒中。用户无从得知 AI 记住了什么、以什么权重理解自己、又以此形成怎样的判断——**不可见、不可控、也难以信任**。
+
+Memory Palace 的答案是：把它造出来，让人看见。
+
+我们选择了**「可感知」而非「可精确控制」**——这是整个产品最重要的设计取舍。用户不需要成为数据库管理员，只需要像整理真实书房一样，直觉地感知记忆的存在、状态与生命周期。
+
+---
+
+## 产品架构：深海三层
+
+系统以**深海**为核心隐喻。深度天然编码了记忆的两个维度：**时间 × 权重**——越深，越久远，也越重要。
+
+```
+  海 平 面 ══════════════════════════════════════
+                                                   
+  ── 0m ──  首  屏                                 
+            导航入口 · 产品介绍                    
+                                                   
+  ─200m ─  便 利 贴 层  THERMOCLINE               
+            短期记忆 · 漂浮的碎片                  
+            拖拽 · 衰减 · 合并升级                 
+                                                   
+ ─1000m ─  书  架  层  CORAL REEF                 
+            中期记忆 · 沉淀的体系                  
+            场景触发 · 书页翻阅 · 销毁归档          
+                                                   
+ ─4000m ─  档 案 馆    ABYSS                      
+            长期记忆 · 封存的图谱                  
+            知识图谱 · 时间轴回溯 · 档案卡片        
+                                                   
+  深 渊 底 ══════════════════════════════════════
+```
+
+---
+
+## 功能详解
+
+### 🟢 便利贴层 · 短期记忆（—200m）
+
+每一条记忆以漂浮的便利贴形式存在，自动归入六种标签类型：
+
+| 标签 | 配色 | 典型内容 |
+|------|------|----------|
+| 知识 | `#43d9a0` 翠绿 | 学到的概念、技能笔记 |
+| 工作 | `#4a9eff` 海蓝 | 项目进展、会议结论 |
+| 偏好 | `#9b6bff` 深紫 | 说话风格、口味习惯 |
+| 生活 | `#ff9f43` 琥珀 | 日程、购物清单 |
+| 情感 | `#ffd93d` 金黄 | 心情记录、感受片段 |
+| 关系 | `#ff6b6b` 珊瑚红 | 关于某人的记忆 |
+
+**衰减机制**：每张便利贴附有流逝进度条，随时间推移经历四个阶段：
+
+```
+fresh（鲜活）→ cooling（冷却）→ fading（褪色）→ critical（临界）→ 消散
+```
+
+遗忘是设计的一部分，不是缺陷。AI 不应对「你今天心情不错」和「你有膝盖旧伤」赋予同等永久性。
+
+**用户操作：**
+- 🖱️ 自由拖拽，重新放置
+- ⬆️ 拖拽至顶部销毁区 → 纸片飞散，记忆消除
+- ⬇️ 拖拽至底部书架区 → 手动升级至书架层
+- ✦ 同标签 ≥3 条时，触发**合并升级提示**，粒子向下沉入书架层
+- ⌨️ 输入框直接写入新的短期记忆
+
+---
+
+### 📚 书架层 · 中期记忆（—1000m）
+
+已形成体系的知识单元以书本形式陈列。衰减状态通过颜色饱和度、倾斜角度与灰尘粒子可感知：
+
+| 状态 | 饱和度 | 倾斜 | 视觉效果 |
+|------|--------|------|----------|
+| fresh | 100% | 直立 | 饱满，书脊底部绿色光带 |
+| cooling | 65% | 微倾 | 轻微褪色 |
+| fading | 30% | −1.2° | 明显褪色，灰尘飘落 |
+| critical | 8% | −2.4° | 近乎灰白，周期性轻颤 |
+
+**交互：**
+- 悬浮书脊 → 弹出书卡（摘要 + 归档 / 销毁 / 打开）
+- 点击书脊 → 翻书浮层，完整记忆条目列表，支持单条标记重要 / 删除
+- 🍳 **场景触发**：点击「想做饭了 / 工作模式」等场景按钮，对应标签书本自动探出，其余淡化——模拟 AI 在对话中调取相关记忆的过程
+
+---
+
+### 🗂️ 档案馆 · 长期记忆（—4000m）
+
+长期记忆以**知识图谱**呈现。节点漂浮幅度极小（≤1.5px），呈现封存质感。
+
+- 节点大小 = 连接数 × 权重，「我」节点为图谱中心
+- 鼠标悬浮节点 → Tooltip 显示标签、描述、连接数
+- 点击节点 → 档案卡片浮层（编号、归档时间、关联节点、跨层关联记忆）
+- 🏷️ 分类标签过滤（个人/身份、工作/项目、知识/学习、生活/场景、关系/人物、情感/状态）
+- 🔍 全文检索，匹配度低的节点自动淡出
+- ⏱️ **时间轴回溯**：拖动底部时间轴，查看「N 个月前的自己在 AI 眼中是什么样的」
+
+---
+
+### ✦ 记忆召唤（全局浮层）
+
+右下角全局可用，自然语言跨层检索记忆。
+
+- AI 实时扫描三层，返回相关记忆并标注来源层级
+- 右侧实时记忆图谱：检索时对应节点发光，**让用户看见 AI 在哪里找到了这段记忆**
+- 光束动画从图谱节点飞向对话区，可视化「记忆被调取」的过程
+
+> 召唤面板强调的不是「你可以查到什么」，而是「AI 是从哪里找到这些的」——来源透明，是信任的基础。
+
+---
+
+### ▶ 动态演示模式
+
+右上角切换静态 / 动态两种状态：
+
+- **静态（默认）**：展示当下时刻的记忆快照，适合理解整体设计
+- **动态演示**：衰减进程真正运行，便利贴进度条走动、状态升级、临界记忆消散于气泡中
+
+---
+
+## 设计判断：透明什么，隐藏什么
+
+| 必须透明 | 实现方式 |
+|----------|----------|
+| 记忆的存在 | 三层全部可见 |
+| 记忆的状态 | 衰减进度条 + 视觉色彩 |
+| 记忆的来源 | 档案卡片标注「来源：书架层沉淀」 |
+| 记忆的关联 | 图谱连线 + 召唤面板来源标注 |
+
+| 刻意隐藏 | 原因 |
+|----------|------|
+| 底层向量表示 / embedding | 展示只会增加认知负担，无法操作 |
+| 沉淀的具体算法 | 用进度条传达趋势，而非计算公式 |
+| 节点权重数值 | 大小已承载此信息，数字会让用户焦虑 |
+| 完整历史默认隐藏 | 时间轴控制可见范围，避免信息过载 |
+
+**原则：隐藏数字，保留趋势；隐藏机制，保留结果。**
+
+---
+
+## 本地运行
+
+```bash
+# 克隆项目
+git clone https://github.com/zhangmsh20/memory-palace.git
+cd memory-palace
+
+# 安装依赖
+npm install
+
+# 启动开发服务器
+npm run dev
+```
+
+推荐在 **Chrome / Edge 桌面端**打开，深度感与空间感体验最佳。
+
+---
+
+## 技术栈
+
+| 模块 | 技术 |
+|------|------|
+| 框架 | React 18 + Vite |
+| 样式 | 纯 CSS（CSS Variables 设计系统） |
+| 图谱渲染 | Canvas 2D API |
+| 动画 | CSS Animation + `requestAnimationFrame` |
+| 数据 | 本地静态数据（无后端） |
+| 字体 | Syne · Syne Mono · DM Sans · Caveat |
+| 部署 | Vercel |
+
+---
+
+## 项目结构
+
+```
+src/
+├── components/
+│   ├── layout/          # Ocean, Cursor, Particles, DepthGauge, DiveTransition
+│   └── layers/          # LayerIntro, LayerSticky, LayerShelf, LayerLibrary
+│   └── ui/              # SummonOverlay, Toast, TechButton
+├── data/                # graphNodes, books, stickyNotes, summonReplies
+├── hooks/               # useDepthScroll, useDrag, useCanvas
+├── styles/              # variables, global, transitions, 各层级 CSS
+└── utils/               # decay, canvas
+```
+
+---
+
+<div align="center">
+
+*Memory Palace · 深渊版 · 黑客松 · 2026.05*
+
+**「AI 记住了你什么？现在你可以看见了。」**
+
+</div>
