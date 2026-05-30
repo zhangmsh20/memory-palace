@@ -6,7 +6,7 @@
 #summon-btn {
   position: fixed; bottom: 32px; right: 36px;
   z-index: 300; padding: 12px 24px;
-  font-family: var(--font-m); font-size: 12px; letter-spacing: .2em;
+  font-family: var(--font-m); font-size: 13px; letter-spacing: .2em;
   color: rgba(130,100,255,0.9); cursor: pointer;
   display: flex; align-items: center; gap: 10px;
   clip-path: polygon(10px 0%,100% 0%,100% calc(100% - 10px),calc(100% - 10px) 100%,0% 100%,0% 10px);
@@ -40,7 +40,6 @@
 }
 #summon-overlay.open { display: flex; }
 
-/* 背景磨砂染色 */
 #summon-bg {
   position: absolute; inset: 0;
   background: rgba(2,2,18,0.88); backdrop-filter: blur(24px);
@@ -48,7 +47,6 @@
 }
 @keyframes summonBgIn { from { opacity: 0; } to { opacity: 1; } }
 
-/* 深渊光晕扩散 */
 #summon-halo {
   position: absolute; left: 50%; top: 50%;
   transform: translate(-50%,-50%);
@@ -61,12 +59,10 @@
   to   { width: 900px; height: 900px; opacity: 1; }
 }
 
-/* 全局光束 canvas */
 #summon-beam-canvas {
   position: absolute; inset: 0; pointer-events: none; z-index: 1;
 }
 
-/* 核心面板 */
 #summon-panel {
   position: relative; z-index: 10;
   width: min(940px, 92vw); height: min(600px, 88vh);
@@ -81,7 +77,6 @@
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* 关闭按钮 */
 #summon-close {
   position: absolute; top: 18px; right: 20px; z-index: 20;
   width: 32px; height: 32px; border-radius: 50%;
@@ -102,7 +97,7 @@
   flex-shrink: 0;
 }
 .sc-title { font-family: var(--font-d); font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 4px; }
-.sc-sub { font-family: var(--font-m); font-size: 10px; letter-spacing: .08em; color: rgba(255,255,255,0.25); }
+.sc-sub { font-family: var(--font-m); font-size: 12px; letter-spacing: .08em; color: rgba(255,255,255,0.3); }
 #sc-messages { flex: 1; overflow-y: auto; padding: 20px 28px; display: flex; flex-direction: column; gap: 16px; scrollbar-width: thin; scrollbar-color: rgba(130,100,255,0.2) transparent; }
 .sc-msg { display: flex; flex-direction: column; gap: 6px; }
 .sc-msg.user { align-items: flex-end; }
@@ -121,17 +116,17 @@
 }
 .sc-source {
   display: flex; align-items: center; gap: 8px;
-  padding: 6px 12px; border-radius: 8px;
+  padding: 7px 13px; border-radius: 8px;
   border: 1px solid rgba(130,100,255,0.2);
   background: rgba(130,100,255,0.05);
-  font-family: var(--font-m); font-size: 10px; letter-spacing: .06em;
-  color: rgba(255,255,255,0.35);
+  font-family: var(--font-m); font-size: 12px; letter-spacing: .06em;
+  color: rgba(255,255,255,0.4);
 }
 .sc-source-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--tag-id); flex-shrink: 0; }
 .sc-thinking {
   display: flex; align-items: center; gap: 10px;
-  padding: 12px 16px; font-family: var(--font-m); font-size: 12px;
-  color: rgba(255,255,255,0.3); letter-spacing: .06em;
+  padding: 12px 16px; font-family: var(--font-m); font-size: 13px;
+  color: rgba(255,255,255,0.35); letter-spacing: .06em;
 }
 .sc-think-dots { display: flex; gap: 5px; }
 .sc-think-dots span {
@@ -149,15 +144,15 @@
 }
 .sc-layer-badge {
   display: flex; align-items: center; gap: 6px;
-  font-family: var(--font-m); font-size: 10px; letter-spacing: .06em;
-  padding: 5px 11px; border-radius: 20px; border: 1px solid transparent;
+  font-family: var(--font-m); font-size: 12px; letter-spacing: .06em;
+  padding: 6px 13px; border-radius: 20px; border: 1px solid transparent;
 }
 .sc-badge-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
-.sc-layer-badge.sticky { border-color: rgba(80,220,180,0.25); color: rgba(80,220,180,0.7); }
+.sc-layer-badge.sticky { border-color: rgba(80,220,180,0.25); color: rgba(80,220,180,0.75); }
 .sc-layer-badge.sticky .sc-badge-dot { background: var(--tag-know); }
-.sc-layer-badge.shelf  { border-color: rgba(255,159,67,0.25); color: rgba(255,159,67,0.7); }
+.sc-layer-badge.shelf  { border-color: rgba(255,159,67,0.25); color: rgba(255,159,67,0.75); }
 .sc-layer-badge.shelf  .sc-badge-dot { background: var(--tag-life); }
-.sc-layer-badge.lib    { border-color: rgba(130,100,255,0.25); color: rgba(130,100,255,0.7); }
+.sc-layer-badge.lib    { border-color: rgba(130,100,255,0.25); color: rgba(130,100,255,0.8); }
 .sc-layer-badge.lib    .sc-badge-dot { background: var(--tag-id); }
 
 /* 输入行 */
@@ -171,14 +166,14 @@
 #sc-input {
   flex: 1; background: transparent; border: none; outline: none;
   padding: 12px 16px;
-  font-family: var(--font-m); font-size: 12px; letter-spacing: .04em;
+  font-family: var(--font-m); font-size: 13px; letter-spacing: .04em;
   color: rgba(255,255,255,0.7);
 }
-#sc-input::placeholder { color: rgba(255,255,255,0.2); }
+#sc-input::placeholder { color: rgba(255,255,255,0.25); }
 #sc-send {
   padding: 10px 18px; background: rgba(130,100,255,0.2);
   border-left: 1px solid rgba(130,100,255,0.2);
-  font-family: var(--font-m); font-size: 11px; letter-spacing: .1em;
+  font-family: var(--font-m); font-size: 12px; letter-spacing: .1em;
   color: rgba(130,100,255,0.9); cursor: pointer; transition: all .2s;
   flex-shrink: 0;
 }
@@ -193,8 +188,8 @@
   padding: 28px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.06);
   display: flex; align-items: center; gap: 12px; flex-shrink: 0;
 }
-.sg-title { font-family: var(--font-d); font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.7); }
-.sg-status { display: flex; align-items: center; gap: 6px; margin-left: auto; font-family: var(--font-m); font-size: 10px; letter-spacing: .06em; color: rgba(255,255,255,0.25); }
+.sg-title { font-family: var(--font-d); font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.75); }
+.sg-status { display: flex; align-items: center; gap: 6px; margin-left: auto; font-family: var(--font-m); font-size: 12px; letter-spacing: .06em; color: rgba(255,255,255,0.3); }
 .sg-status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--tag-know); animation: aipulse 2s ease-in-out infinite; flex-shrink: 0; }
 #sg-canvas { flex: 1; width: 100%; }
 #sg-beam-canvas { position: absolute; inset: 0; pointer-events: none; }

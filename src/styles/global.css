@@ -61,35 +61,34 @@ html, body {
   pointer-events: none;
 }
 .logo-text {
-  font-family: var(--font-d); font-size: 12px; font-weight: 700;
+  font-family: var(--font-d); font-size: 13px; font-weight: 700;
   letter-spacing: .18em; color: rgba(255,255,255,0.4);
   pointer-events: all; cursor: pointer; transition: color .3s;
 }
 .logo-text:hover { color: rgba(255,255,255,0.8); }
 .logo-ver {
-  font-family: var(--font-m); font-size: 9px;
-  color: var(--tag-know); margin-left: 8px; letter-spacing: .06em; opacity: 0.6;
+  font-family: var(--font-m); font-size: 11px;
+  color: var(--tag-know); margin-left: 8px; letter-spacing: .06em; opacity: 0.7;
 }
 
 /* ── 动态演示按钮 ── */
 #demo-toggle {
-  margin-left: auto;           /* 推到最右 */
+  margin-left: auto;
   pointer-events: all;
   display: flex; align-items: center; gap: 8px;
   padding: 8px 18px;
-  font-family: var(--font-m); font-size: 10px; letter-spacing: .16em;
+  font-family: var(--font-m); font-size: 12px; letter-spacing: .16em;
   text-transform: uppercase;
   color: rgba(80,220,180,0.7);
   background: rgba(4,4,18,0.75);
   border: 1px solid rgba(80,220,180,0.25);
-  border-radius: 0;                /* 配合 clip-path 的科技感 */
+  border-radius: 0;
   clip-path: polygon(8px 0%,100% 0%,100% calc(100% - 8px),calc(100% - 8px) 100%,0% 100%,0% 8px);
   cursor: pointer;
   backdrop-filter: blur(16px);
   transition: color .25s, border-color .25s, background .25s, box-shadow .25s;
   position: relative; overflow: hidden;
 }
-/* 扫描光（与 trigger-pill 同款） */
 #demo-toggle::before {
   content: ''; position: absolute; top: -100%; left: 0; right: 0; height: 100%;
   background: linear-gradient(180deg,transparent,rgba(80,220,180,0.07),transparent);
@@ -101,7 +100,6 @@ html, body {
   background: rgba(80,220,180,0.07);
   box-shadow: 0 0 18px rgba(80,220,180,0.15);
 }
-/* 运行中状态 */
 #demo-toggle.demo-running {
   color: rgba(255,200,80,0.9);
   border-color: rgba(255,200,80,0.45);
@@ -113,7 +111,6 @@ html, body {
   border-color: rgba(255,200,80,0.75);
   box-shadow: 0 0 24px rgba(255,200,80,0.22);
 }
-/* 指示灯 */
 .dt-indicator {
   width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
   background: rgba(80,220,180,0.7);
@@ -166,19 +163,19 @@ html, body {
 }
 .gauge-label {
   position: absolute; right: 32px;
-  font-family: var(--font-m); font-size: 11px; letter-spacing: .08em;
-  color: rgba(255,255,255,0.22); white-space: nowrap;
+  font-family: var(--font-m); font-size: 12px; letter-spacing: .08em;
+  color: rgba(255,255,255,0.3); white-space: nowrap;
   transition: color .3s, opacity .3s, transform .3s;
   opacity: 0; pointer-events: none; transform: translateX(4px);
 }
-.gauge-stop:hover .gauge-label { opacity: 1; color: rgba(255,255,255,0.55); transform: translateX(0); }
+.gauge-stop:hover .gauge-label { opacity: 1; color: rgba(255,255,255,0.65); transform: translateX(0); }
 .gauge-stop.active .gauge-label { opacity: 0; }
 
 /* ── SCROLL HINT ── */
 #scroll-hint {
   position: fixed; bottom: 28px; right: 56px; z-index: 200;
-  font-family: var(--font-m); font-size: 9px; letter-spacing: .15em;
-  color: rgba(255,255,255,0.2);
+  font-family: var(--font-m); font-size: 12px; letter-spacing: .15em;
+  color: rgba(255,255,255,0.3);
   display: flex; align-items: center; gap: 6px;
   pointer-events: none; text-transform: uppercase;
 }
@@ -212,7 +209,7 @@ html, body {
   background: rgba(8,8,30,0.9);
   border: 1px solid rgba(80,220,180,0.35);
   border-radius: 8px; padding: 9px 20px;
-  font-family: var(--font-m); font-size: 11px; letter-spacing: .08em;
+  font-family: var(--font-m); font-size: 13px; letter-spacing: .08em;
   color: var(--tag-know); z-index: 9000;
   animation: toastIn .3s ease; pointer-events: none;
   backdrop-filter: blur(12px);
@@ -266,9 +263,12 @@ html, body {
   position: absolute; top: 72px; left: 48px;
   z-index: 20; pointer-events: none;
 }
-.lh-zone  { font-family: var(--font-m); font-size: 9px; letter-spacing: .2em; color: rgba(80,200,255,0.4); margin-bottom: 8px; text-transform: uppercase; }
+.lh-zone  {
+  font-family: var(--font-m); font-size: 11px; letter-spacing: .2em;
+  color: rgba(80,200,255,0.5); margin-bottom: 8px; text-transform: uppercase;
+}
 .lh-title { font-family: var(--font-d); font-size: 28px; font-weight: 800; color: rgba(255,255,255,0.9); margin-bottom: 4px; }
-.lh-sub   { font-family: var(--font-m); font-size: 11px; letter-spacing: .08em; color: rgba(255,255,255,0.25); }
+.lh-sub   { font-family: var(--font-m); font-size: 13px; letter-spacing: .08em; color: rgba(255,255,255,0.35); }
 
 /* ── aipulse（被多处共用） ── */
 @keyframes aipulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.4; transform:scale(.7); } }

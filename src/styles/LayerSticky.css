@@ -35,7 +35,7 @@
 /* 标签徽章 */
 .s-badge {
   display: inline-flex; align-items: center; gap: 5px;
-  font-family: var(--font-m); font-size: 10px; letter-spacing: .06em;
+  font-family: var(--font-m); font-size: 11px; letter-spacing: .06em;
   padding: 3px 8px; border-radius: 4px; margin-bottom: 8px; font-style: normal;
 }
 .sticky-note.c-green  .s-badge { background: rgba(67,217,160,0.15);  color: var(--tag-know); }
@@ -55,7 +55,7 @@
 
 .s-time {
   position: absolute; bottom: 7px; right: 10px;
-  font-family: var(--font-m); font-size: 9px; opacity: 0.35; color: #2a1a08;
+  font-family: var(--font-m); font-size: 11px; opacity: 0.45; color: #2a1a08;
 }
 .s-pin {
   position: absolute; top: -9px; left: 50%; transform: translateX(-50%);
@@ -104,7 +104,7 @@
 }
 #dissolve-zone-label {
   position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-  font-family: var(--font-m); font-size: 10px; letter-spacing: .2em;
+  font-family: var(--font-m); font-size: 12px; letter-spacing: .2em;
   color: rgba(255,100,80,0.9); text-transform: uppercase; white-space: nowrap;
   text-shadow: 0 0 12px rgba(255,60,60,0.8);
 }
@@ -122,18 +122,27 @@
   background: linear-gradient(0deg,rgba(255,180,80,0.2) 0%,transparent 100%);
   border-color: rgba(255,180,80,0.5);
 }
-.sdz-label { font-family: var(--font-m); font-size: 11px; letter-spacing: .15em; color: rgba(255,180,80,0.6); text-transform: uppercase; }
+.sdz-label {
+  font-family: var(--font-m); font-size: 13px; letter-spacing: .15em;
+  color: rgba(255,180,80,0.6); text-transform: uppercase;
+}
 
 /* 衰减图例 */
 .decay-legend {
   position: absolute; top: 68px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 16px; z-index: 20;
   background: rgba(4,4,18,0.78); border: 1px solid rgba(255,255,255,0.07);
-  border-radius: 30px; padding: 7px 18px; backdrop-filter: blur(16px);
+  border-radius: 30px; padding: 8px 20px; backdrop-filter: blur(16px);
   white-space: nowrap; pointer-events: none;
 }
-.dl-legend-title { font-family: var(--font-m); font-size: 9px; letter-spacing: .2em; color: rgba(255,255,255,0.2); text-transform: uppercase; }
-.dl-row { display: flex; align-items: center; gap: 6px; font-family: var(--font-m); font-size: 10px; letter-spacing: .04em; color: rgba(255,255,255,0.5); }
+.dl-legend-title {
+  font-family: var(--font-m); font-size: 11px; letter-spacing: .2em;
+  color: rgba(255,255,255,0.35); text-transform: uppercase;
+}
+.dl-row {
+  display: flex; align-items: center; gap: 6px; font-family: var(--font-m);
+  font-size: 12px; letter-spacing: .04em; color: rgba(255,255,255,0.6);
+}
 .dl-swatch { width: 14px; height: 9px; border-radius: 2px; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.08); }
 .dl-swatch.s-fresh    { background: #e8d8a0; box-shadow: 0 0 5px rgba(80,220,180,0.5); }
 .dl-swatch.s-cooling  { background: #b8a870; }
@@ -165,11 +174,11 @@
 @keyframes aipulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.4; transform:scale(.7); } }
 .sib-input {
   flex: 1; background: transparent; border: none; outline: none;
-  font-family: var(--font-m); font-size: 12px; letter-spacing: .04em; color: rgba(255,255,255,0.7);
+  font-family: var(--font-m); font-size: 13px; letter-spacing: .04em; color: rgba(255,255,255,0.7);
 }
-.sib-input::placeholder { color: rgba(255,255,255,0.2); }
+.sib-input::placeholder { color: rgba(255,255,255,0.3); }
 .sib-send {
-  font-family: var(--font-m); font-size: 10px; letter-spacing: .12em;
+  font-family: var(--font-m); font-size: 12px; letter-spacing: .12em;
   color: rgba(80,200,255,0.8); cursor: pointer; padding: 6px 14px;
   clip-path: polygon(6px 0%,100% 0%,100% calc(100% - 6px),calc(100% - 6px) 100%,0% 100%,0% 6px);
   border: 1px solid rgba(80,200,255,0.3);
@@ -182,6 +191,62 @@
   animation: pillScan 2s linear infinite; pointer-events: none;
 }
 .sib-send:hover { color: rgba(80,200,255,1); border-color: rgba(80,200,255,0.7); background: rgba(80,200,255,0.1); box-shadow: 0 0 14px rgba(80,200,255,0.2); }
+
+/* ══════════════════════════════════════
+   演示记忆合并按钮 — 右上角
+   ══════════════════════════════════════ */
+.merge-demo-btn {
+  position: absolute;
+  top: 72px;
+  right: 88px; /* 避开深度计 */
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 20px;
+  font-family: var(--font-m);
+  font-size: 13px;
+  letter-spacing: .14em;
+  color: rgba(74,158,255,0.9);
+  background: rgba(4,4,18,0.88);
+  border: 1px solid rgba(74,158,255,0.35);
+  border-radius: 0;
+  clip-path: polygon(8px 0%,100% 0%,100% calc(100% - 8px),calc(100% - 8px) 100%,0% 100%,0% 8px);
+  cursor: pointer;
+  backdrop-filter: blur(16px);
+  transition: color .25s, border-color .25s, background .25s, box-shadow .25s;
+  overflow: hidden;
+  pointer-events: all;
+}
+.merge-demo-btn::before {
+  content: '';
+  position: absolute; top: -100%; left: 0; right: 0; height: 100%;
+  background: linear-gradient(180deg,transparent,rgba(74,158,255,0.08),transparent);
+  animation: pillScan 3s linear infinite;
+  pointer-events: none;
+}
+.merge-demo-btn::after {
+  content: '';
+  position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
+  background: linear-gradient(90deg,transparent,rgba(74,158,255,0.6),transparent);
+  opacity: 0.5;
+}
+.merge-demo-btn:hover {
+  color: rgba(120,190,255,1);
+  border-color: rgba(74,158,255,0.75);
+  background: rgba(74,158,255,0.1);
+  box-shadow: 0 0 24px rgba(74,158,255,0.25), 0 0 48px rgba(74,158,255,0.1);
+}
+.mdb-pulse {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(74,158,255,0.85);
+  flex-shrink: 0;
+  animation: aipulse 2s ease-in-out infinite;
+}
+.mdb-icon {
+  font-size: 11px;
+  filter: drop-shadow(0 0 5px rgba(74,158,255,0.7));
+}
 
 /* ══════════════════════════════════════
    便利贴流逝进度条
@@ -213,19 +278,18 @@
    ══════════════════════════════════════ */
 .merge-hint {
   position: absolute;
-  /* 悬浮在 shelf-drop-zone 上方 */
   bottom: calc(120px + 12px);
   left: 50%;
   transform: translateX(-50%) translateY(10px);
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 11px 16px;
+  padding: 12px 18px;
   background: rgba(6, 4, 22, 0.96);
   border: 1px solid rgba(255, 180, 80, 0.45);
   border-radius: 12px;
   font-family: var(--font-m);
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: .06em;
   color: rgba(255, 205, 110, 0.9);
   z-index: 60;
@@ -246,7 +310,6 @@
   pointer-events: all;
 }
 
-/* 左侧高亮竖条 */
 .merge-hint::before {
   content: '';
   position: absolute;
@@ -257,7 +320,7 @@
 }
 
 .mh-icon {
-  font-size: 13px;
+  font-size: 14px;
   flex-shrink: 0;
   filter: drop-shadow(0 0 6px rgba(255, 180, 80, 0.6));
 }
@@ -273,9 +336,9 @@
 }
 
 .mh-btn {
-  padding: 6px 14px;
+  padding: 7px 15px;
   font-family: var(--font-m);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: .1em;
   cursor: pointer;
   border-radius: 7px;
@@ -315,17 +378,14 @@
 }
 
 /* ══════════════════════════════════════
-   合并升级动画：便利贴聚合粒子爆发
+   合并粒子
    ══════════════════════════════════════ */
-
-/* 升级成功时便利贴飞向书架的拖尾 */
 @keyframes mergePromote {
   0%   { opacity: 1; filter: saturate(2) brightness(1.5); }
   60%  { opacity: 0.8; filter: saturate(3) brightness(2); }
   100% { opacity: 0; filter: saturate(0) brightness(0.5); }
 }
 
-/* 合并粒子：从便利贴位置向中心聚合 */
 .merge-particle {
   position: fixed;
   width: 6px; height: 6px;
@@ -341,7 +401,6 @@
   100% { opacity: 0;   transform: translate(var(--mp-tx, 0px), var(--mp-ty, 0px)) scale(0.2); }
 }
 
-/* 合并成功后的书架层新书入场光晕 */
 .shelf-merge-flash {
   position: fixed;
   inset: 0;
@@ -356,4 +415,3 @@
   20%  { opacity: 1; }
   100% { opacity: 0; }
 }
-

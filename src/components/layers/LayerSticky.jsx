@@ -178,7 +178,6 @@ function createNoteFromInput(text, board) {
   setTimeout(() => checkMergeHint(board), 100);
 }
 
-// [FIX] 修复 getBadgeTag：克隆节点移除 dot 后读纯文字，消除空格干扰
 function getBadgeTag(note) {
   const badge = note.querySelector('.s-badge');
   if (!badge) return '';
@@ -187,7 +186,6 @@ function getBadgeTag(note) {
   return clone.textContent.trim();
 }
 
-// ── 合并演示：注入3张「工作」便利贴触发合并流程 ──
 function triggerMergeDemo(board) {
   const demoNotes = [
     { text: '完成记忆宫殿原型设计稿', tag: '工作', cls: 'c-blue', r: -2   },
@@ -216,12 +214,10 @@ function triggerMergeDemo(board) {
     setupDrag(el, { showToast, startNoteFloat, stopNoteFloat });
   });
 
-  // 等入场动画跑完再检测，确保 DOM 已稳定
   setTimeout(() => checkMergeHint(board), 950);
   showToast('✦ 注入3条「工作」记忆，等待合并…', 'rgba(74,158,255,0.9)');
 }
 
-// ── 合并粒子 ──
 function spawnMergeParticles(noteEls) {
   const targetX = window.innerWidth / 2;
   const targetY = window.innerHeight * 0.88;
@@ -294,7 +290,6 @@ function checkMergeHint(board) {
       };
 
       document.getElementById('merge-confirm').onclick = () => {
-        // 点击时重新扫描，拿最新列表
         const targetNotes = Array.from(board.querySelectorAll('.sticky-note'))
           .filter(n => getBadgeTag(n) === hitTag);
         const confirmBtn = document.getElementById('merge-confirm');
@@ -332,7 +327,6 @@ import { BOOK_STAGE_DURATION } from '../../utils/decay';
 export default function LayerSticky({ isDemoMode }) {
   const inited    = useRef(false);
   const timersRef = useRef({ decay1: null, decay2: null, bubble: null });
-  // [FIX] 用 ref 持久化 board 引用，供 JSX onClick 直接调用，绕开 getElementById 时机问题
   const boardRef  = useRef(null);
 
   useEffect(() => {
@@ -340,13 +334,13 @@ export default function LayerSticky({ isDemoMode }) {
     inited.current = true;
     const board = document.getElementById('sticky-board');
     if (!board) return;
-    boardRef.current = board;  // 存入 ref
+    boardRef.current = board;
 
     TIME_BANDS.forEach(b => {
       const el = document.createElement('div');
       el.style.cssText = `position:absolute;left:0;right:0;top:${b.yFrom*100}%;height:${(b.yTo-b.yFrom)*100}%;background:${b.color};pointer-events:none;border-top:1px solid rgba(255,255,255,0.025);z-index:0;`;
       const label = document.createElement('div');
-      label.style.cssText = `position:absolute;left:8px;top:6px;font-family:'Syne Mono',monospace;font-size:8px;letter-spacing:.15em;color:rgba(255,255,255,0.1);text-transform:uppercase;`;
+      label.style.cssText = `position:absolute;left:8px;top:6px;font-family:'Syne Mono',monospace;font-size:11px;letter-spacing:.15em;color:rgba(255,255,255,0.18);text-transform:uppercase;`;
       label.textContent = b.label;
       el.appendChild(label);
       board.appendChild(el);
@@ -360,7 +354,6 @@ export default function LayerSticky({ isDemoMode }) {
     }
     timersRef.current.bubble = setInterval(() => spawnBubble(board), 2200 + Math.random() * 800);
 
-    // 输入框绑定
     const input = document.getElementById('sib-input');
     const send  = document.getElementById('sib-send');
     const doSend = () => {
@@ -425,17 +418,18 @@ export default function LayerSticky({ isDemoMode }) {
         <div className="lh-sub">短期记忆 · 拖拽至底部升级书架 · 拖拽至顶部销毁</div>
       </div>
 
-      {/* [FIX] 直接用 JSX onClick + boardRef，完全绕开 getElementById 时机问题 */}
-      <div
-        className="merge-demo-entry"
+      {/* 演示记忆合并按钮 — 右上角真实按钮 */}
+      <button
+        className="merge-demo-btn"
         onClick={() => {
           const board = boardRef.current;
           if (board) triggerMergeDemo(board);
         }}
       >
-        <span className="mde-icon">✦</span>
+        <span className="mdb-pulse" />
+        <span className="mdb-icon">✦</span>
         演示记忆合并
-      </div>
+      </button>
 
       <div className="sticky-board" id="sticky-board">
         <div id="sticky-motes" />
