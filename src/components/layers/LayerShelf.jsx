@@ -72,7 +72,7 @@ function advanceBookStage(el) {
   }
 }
 
-function initBookDecay(el, i, isDemoMode) {
+function initBookDecay(el, i) {
   const initDecay = el.dataset.initDecay || 'fresh';
   el.dataset.stage      = initDecay;
   el.dataset.stageStart = Date.now();
@@ -96,7 +96,6 @@ function initBookDecay(el, i, isDemoMode) {
 export default function LayerShelf({ isDemoMode }) {
   const inited  = useRef(false);
   const [openBook, setOpenBook] = useState(null);
-  // ✦ 当前激活模式 state（用于按钮高亮）
   const [activeScene, setActiveScene] = useState('reset');
 
   // ── 初始化 ──
@@ -134,34 +133,18 @@ export default function LayerShelf({ isDemoMode }) {
           </div>
         </div>`;
       rows[b.row].appendChild(el);
-      initBookDecay(el, i, false);
+      initBookDecay(el, i);
 
+      // [FIX] 书脊点击：只绑定打开 BookPage，hover 全部交由 CSS :hover 处理
+      // 不再需要任何 mouseenter / mouseleave JS 逻辑
       el.querySelector('.book-spine').addEventListener('click', (e) => {
         e.stopPropagation();
         setOpenBook(BOOKS[i]);
       });
 
-      // ✦ 修复 hover 跳动 bug：
-      // 核心原因：mouseenter/mouseleave 触发在书本子元素（book-cover, book-top）之间反复跳，
-      // 导致 card-open 类被反复加减。解决方案：用 contains 检查 relatedTarget 是否在书本内部。
-      let closeTimer = null;
-      const openCard = () => {
-        clearTimeout(closeTimer);
-        el.classList.add('card-open', 'lift-hover');
-      };
-      const closeCard = (e) => {
-        // 如果鼠标移向的目标仍在这个 book 元素内部，不触发关闭
-        if (e && el.contains(e.relatedTarget)) return;
-        closeTimer = setTimeout(() => el.classList.remove('card-open', 'lift-hover'), 120);
-      };
-
-      // ✦ 用 mouseleave 替代 mouseleave，并检查 relatedTarget
-      el.addEventListener('mouseenter', openCard);
-      el.addEventListener('mouseleave', closeCard);
-
+      // book-card 内的按钮 stopPropagation，防止点击卡片时意外触发书脊 click
       const card = el.querySelector('.book-card');
-      card.addEventListener('mouseenter', () => clearTimeout(closeTimer));
-      card.addEventListener('mouseleave', closeCard);
+      card.addEventListener('click', e => e.stopPropagation());
 
       // 归档按钮
       card.querySelector('[data-archive]').addEventListener('click', (e) => {
@@ -212,11 +195,10 @@ export default function LayerShelf({ isDemoMode }) {
     });
   }, [isDemoMode]);
 
-  // ✦ 重构场景切换：每次先完整清理内联样式，再下一帧应用新状态，彻底修复切换 bug
+  // ── 场景切换 ──
   function applyScene(sceneId) {
     setActiveScene(sceneId);
 
-    // 第一步：同步清除所有遗留内联样式和 class
     document.querySelectorAll('.book').forEach(b => {
       b.classList.remove('triggered');
       b.style.removeProperty('opacity');
@@ -230,15 +212,13 @@ export default function LayerShelf({ isDemoMode }) {
     const mode = SCENE_MODES.find(m => m.id === sceneId);
     if (!mode || !mode.tags) return;
 
-    // 第二步：RAF 确保 DOM 清理已渲染，再应用新状态
     requestAnimationFrame(() => {
       document.getElementById('shelf-overlay')?.classList.add('on');
       document.querySelectorAll('.book').forEach(b => {
         const idx = parseInt(b.dataset.idx);
         if (idx < 0 || idx >= BOOKS.length) return;
         const book = BOOKS[idx];
-        const tagMatch = mode.tags.includes(book.tag);
-        // 如果有 bookFilter，额外按书名过滤
+        const tagMatch   = mode.tags.includes(book.tag);
         const titleMatch = mode.bookFilter
           ? mode.bookFilter.some(t => book.title.includes(t))
           : tagMatch;
@@ -247,9 +227,9 @@ export default function LayerShelf({ isDemoMode }) {
         if (isActive) {
           b.classList.add('triggered');
         } else {
-          b.style.opacity = '0.12';
+          b.style.opacity    = '0.12';
           b.style.transition = 'opacity .4s ease';
-          b.style.filter = 'saturate(0.2)';
+          b.style.filter     = 'saturate(0.2)';
         }
       });
     });
@@ -268,7 +248,7 @@ export default function LayerShelf({ isDemoMode }) {
           <div className="bookshelf" id="bookshelf" />
           <div className="shelf-overlay" id="shelf-overlay" />
 
-          {/* ✦ 重构：统一的查看模式选择器 */}
+          {/* 查看模式选择器 */}
           <div className="shelf-scene-bar">
             <span className="scene-bar-label">查看模式</span>
             <div className="scene-pills">

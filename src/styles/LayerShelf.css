@@ -23,7 +23,6 @@
   border-bottom: 2px solid rgba(160,120,60,0.2);
   background: linear-gradient(180deg,transparent 80%,rgba(80,55,20,0.08) 100%);
   min-height: 110px; overflow: visible;
-  /* ✦ PATCH 4a: 书本间距 6px → 10px，让书架有呼吸感 */
   gap: 10px;
 }
 .shelf-row::before {
@@ -39,10 +38,48 @@
 .book {
   position: relative; cursor: pointer;
   transform-origin: bottom center;
-  transition: transform .3s cubic-bezier(.34,1.56,.64,1), filter .3s, opacity .4s;
+  /* 
+   * [FIX] 去掉 JS hover 的 transition，改由 CSS :hover 接管。
+   * 保留 filter/opacity 过渡，transform 由各状态分别控制。
+   */
+  transition: filter .3s, opacity .4s;
   flex-shrink: 0;
 }
+
+/*
+ * [FIX] 书本悬浮抖动根治方案：
+ * 完全用 CSS :hover 替代 JS 的 mouseenter/mouseleave + lift-hover class。
+ * :hover 的命中范围由 ::before 伪元素扩展，确保鼠标从书脊滑向卡片时不会
+ * 离开 hover 区域，彻底断绝抖动来源。
+ *
+ * lift-hover 保留作为 JS 触发场景（triggered 状态）的兼容，不参与普通 hover。
+ */
+.book:hover {
+  transform: translateY(-16px) scale(1.05);
+  z-index: 30;
+  /* 延迟离开，给鼠标移向 book-card 留出缓冲时间 */
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1), filter .3s, opacity .4s, z-index 0s;
+}
+
+/*
+ * [FIX] 扩展书本的 hover 热区，向上延伸覆盖 book-card 的区域（约220px）。
+ * 这样当鼠标从书本移向卡片时，:hover 状态不会中断。
+ */
+.book::before {
+  content: '';
+  position: absolute;
+  /* 向上延伸 250px 覆盖卡片区域，向两侧延伸 20px */
+  top: -250px;
+  left: -20px;
+  right: -20px;
+  bottom: 0;
+  z-index: -1;
+  /* 透明，只用于扩大 hover 热区 */
+}
+
+/* [COMPAT] lift-hover 保留，用于 triggered 动画完成后的状态 */
 .book.lift-hover { transform: translateY(-16px) scale(1.05) !important; z-index: 30; }
+
 .book-spine {
   border-radius: 2px 0 0 2px;
   display: flex;
@@ -91,26 +128,23 @@
 .book-cover { position: absolute; right: -18px; top: 0; bottom: 0; width: 18px; border-radius: 0 2px 2px 0; background: inherit; filter: brightness(0.55); }
 .book-top   { position: absolute; top: -4px; left: 0; right: -18px; height: 4px; border-radius: 2px 2px 0 0; background: inherit; filter: brightness(1.35); }
 
-/* ── 衰减状态
-   ✦ PATCH 4b: 加大 fading/critical 的倾斜和下移幅度，让衰减梯度更可感知
-   ── */
+/* ── 衰减状态 ── */
 .book.fresh    .book-spine { filter: saturate(1) brightness(1); }
 .book.cooling  .book-spine { filter: saturate(0.65) brightness(0.85); }
 .book.fading   .book-spine { filter: saturate(0.3) brightness(0.65); }
 
-/* fading: 倾斜从 -0.6deg → -1.2deg，增加 translateY(2px)，配合更低的饱和度 */
-.book.fading:not(.lift-hover) {
+/* fading: 倾斜，配合更低的饱和度 */
+.book.fading:not(.lift-hover):not(:hover) {
   transform: rotate(-1.2deg) translateY(2px);
 }
 
-/* critical: 倾斜从 -1.8deg → -2.4deg，translateY 从 4px → 6px，加抖动动画 */
+/* critical: 倾斜加抖动动画 */
 .book.critical .book-spine { filter: saturate(0.08) brightness(0.45); }
-.book.critical:not(.lift-hover) {
+.book.critical:not(.lift-hover):not(:hover) {
   transform: rotate(-2.4deg) translateY(6px);
   animation: criticalTilt 4s ease-in-out infinite;
 }
 
-/* ✦ PATCH 4c: critical 书本轻微摇晃，暗示"快要倒下"*/
 @keyframes criticalTilt {
   0%, 100% { transform: rotate(-2.4deg) translateY(6px); }
   40%      { transform: rotate(-2.8deg) translateY(7px); }
@@ -118,7 +152,7 @@
 }
 
 /* ══════════════════════════════════════
-   [PATCH] book-decay-prog
+   book-decay-prog
    ══════════════════════════════════════ */
 .book-decay-prog {
   position: absolute;
@@ -142,7 +176,6 @@
   0%, 100% { opacity: 0.5; }
   50%       { opacity: 1; }
 }
-
 
 /* 尘埃 */
 .dust {
@@ -180,6 +213,21 @@
   backdrop-filter: blur(24px);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7);
 }
+
+/*
+ * [FIX] 同时响应 CSS :hover 和旧的 .card-open class（兼容其他地方可能残留的 JS 调用）
+ */
+.book:hover .book-card,
+.book.card-open .book-card {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateX(-50%) scale(1) translateY(0);
+}
+
+/*
+ * [FIX] book-card 自身也扩展 hover 热区，确保鼠标在卡片内时书本保持上浮状态。
+ * 向下延伸覆盖书本到卡片之间的 10px 间隙。
+ */
 .book-card::after {
   content: '';
   position: absolute;
@@ -188,12 +236,6 @@
   bottom: -28px;
   left: -20px;
   z-index: -1;
-}
-
-.book.card-open .book-card {
-  opacity: 1;
-  pointer-events: all;
-  transform: translateX(-50%) scale(1) translateY(0);
 }
 
 .bc-title   { font-family: var(--font-d); font-size: 13px; font-weight: 700; margin-bottom: 8px; }
@@ -226,7 +268,82 @@
 .bc-btn.open    { border-color: rgba(80,200,255,0.3); color: rgba(80,200,255,0.7); font-size: 12px; }
 .bc-btn.open:hover    { border-color: rgba(80,200,255,0.7); background: rgba(80,200,255,0.1); color: #fff; }
 
-/* ── 场景触发按钮 ── */
+/* ══════════════════════════════════════
+   查看模式场景栏（重构版）
+   替代旧的 .shelf-trigger / .trigger-pill
+   ══════════════════════════════════════ */
+.shelf-scene-bar {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(4, 4, 18, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 40px;
+  padding: 8px 16px;
+  backdrop-filter: blur(20px);
+  z-index: 50;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
+
+.scene-bar-label {
+  font-family: var(--font-m);
+  font-size: 9px;
+  letter-spacing: .15em;
+  color: rgba(255, 255, 255, 0.25);
+  text-transform: uppercase;
+  padding-right: 10px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.scene-pills {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.scene-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 20px;
+  font-family: var(--font-m);
+  font-size: 10px;
+  letter-spacing: .06em;
+  color: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  cursor: pointer;
+  transition: all .2s ease;
+  background: transparent;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.scene-pill:hover {
+  color: rgba(255, 255, 255, 0.8);
+  border-color: rgba(255, 159, 67, 0.35);
+  background: rgba(255, 159, 67, 0.05);
+}
+
+.scene-pill.active {
+  color: #fff;
+  border-color: rgba(255, 159, 67, 0.65);
+  background: rgba(255, 159, 67, 0.11);
+  box-shadow: 0 0 12px rgba(255, 159, 67, 0.18);
+}
+
+.sp-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* ── 旧 shelf-trigger 保留（若其他地方仍在使用）── */
 .shelf-trigger {
   position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 10px;

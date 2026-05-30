@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { STICKY_DATA, TIME_BANDS, TAG_HEX_MAP } from '../../data/stickyNotes';
+import { STICKY_DATA, TIME_BANDS } from '../../data/stickyNotes';
 import { setupDrag } from '../../hooks/useDrag';
 import { decayLabel } from '../../utils/decay';
 
@@ -48,7 +48,7 @@ function injectProgress(el, decay) {
   prog.className = 'sn-prog';
   const fill = document.createElement('div');
   fill.className = 'sn-prog-fill';
-  fill.style.width   = (STATIC_PROG[decay] || 0.45) * 100 + '%';
+  fill.style.width      = (STATIC_PROG[decay] || 0.45) * 100 + '%';
   fill.style.background = getProgColor(decay);
   if (decay === 'critical') fill.style.animation = 'snCritFill 1.8s ease-in-out infinite';
   prog.appendChild(fill);
@@ -60,8 +60,8 @@ function startProgTimer(el, fill) {
   const DURATIONS = { fresh: 30000, cooling: 22000, fading: 18000 };
   const decay = el.dataset.decay;
   if (decay === 'critical') return;
-  const dur = DURATIONS[decay] || 20000;
-  const start = Date.now();
+  const dur      = DURATIONS[decay] || 20000;
+  const start    = Date.now();
   const startPct = STATIC_PROG[decay] || 0.45;
   function tick() {
     if (!el.isConnected) return;
@@ -110,36 +110,37 @@ function animDissolve(el) {
 }
 
 function spawnBubble(board) {
-  const bw   = board.offsetWidth  || window.innerWidth;
-  const bh   = board.offsetHeight || window.innerHeight;
-  const rv   = Math.random();
+  const bw  = board.offsetWidth  || window.innerWidth;
+  const bh  = board.offsetHeight || window.innerHeight;
+  const rv  = Math.random();
   const size = rv < 0.6 ? 5 + Math.random() * 8 : rv < 0.88 ? 13 + Math.random() * 7 : 20 + Math.random() * 6;
-  const x    = 20 + Math.random() * (bw - 40);
-  const y    = bh * 0.3 + Math.random() * (bh * 0.65);
-  const dur  = 9 + Math.random() * 10;
-  const del  = Math.random() * 2;
-  const bx1  = (Math.random() - 0.5) * 30;
-  const bx2  = (Math.random() - 0.5) * 50;
-  const bx3  = (Math.random() - 0.5) * 30;
-  const bx4  = (Math.random() - 0.5) * 20;
+  const x   = 20 + Math.random() * (bw - 40);
+  const y   = bh * 0.3 + Math.random() * (bh * 0.65);
+  const dur = 9 + Math.random() * 10;
+  const del = Math.random() * 2;
   const opacity = size < 10 ? 0.12 + Math.random() * 0.10 : size < 16 ? 0.15 + Math.random() * 0.12 : 0.18 + Math.random() * 0.10;
   const el = document.createElement('div');
   el.className = 'memory-bubble';
-  el.style.cssText = `width:${size}px;height:${size}px;left:${x}px;top:${y}px;--bdur:${dur}s;--bdel:${del}s;--bopacity:${opacity};--bx1:${bx1}px;--bx2:${bx2}px;--bx3:${bx3}px;--bx4:${bx4}px;`;
+  el.style.cssText = [
+    `width:${size}px`, `height:${size}px`, `left:${x}px`, `top:${y}px`,
+    `--bdur:${dur}s`, `--bdel:${del}s`, `--bopacity:${opacity}`,
+    `--bx1:${(Math.random()-.5)*30}px`, `--bx2:${(Math.random()-.5)*50}px`,
+    `--bx3:${(Math.random()-.5)*30}px`, `--bx4:${(Math.random()-.5)*20}px`,
+  ].join(';');
   board.appendChild(el);
   setTimeout(() => el.remove(), (dur + del) * 1000 + 200);
 }
 
 function spawnNote(d, board, isDemoMode = false) {
-  const el    = document.createElement('div');
+  const el = document.createElement('div');
   el.className = `sticky-note ${d.cls} decay-${d.decay}`;
   el.dataset.decay = d.decay;
-  const bw   = window.innerWidth;
-  const bh   = window.innerHeight;
+  const bw    = window.innerWidth;
+  const bh    = window.innerHeight;
   const noteW = 168;
-  const px   = 180 + (d.xPct / 100) * Math.max(bw - 260 - noteW, 100);
+  const px    = 180 + (d.xPct / 100) * Math.max(bw - 260 - noteW, 100);
   const [yMin, yMax] = d.yBand;
-  const py   = (yMin / 100) * bh + Math.random() * ((yMax - yMin) / 100) * bh;
+  const py    = (yMin / 100) * bh + Math.random() * ((yMax - yMin) / 100) * bh;
   el.dataset.px = px; el.dataset.py = py; el.dataset.r = d.r;
   el.style.cssText = `position:absolute;left:0;top:0;transform:translate(${px}px,${py}px) rotate(${d.r}deg);will-change:transform;z-index:10;`;
   el.innerHTML = `<div class="s-pin"></div><div class="s-badge"><div class="s-dot"></div>${d.tag}</div>${d.text}<div class="s-time">${decayLabel(d.decay)}</div>`;
@@ -156,8 +157,7 @@ function createNoteFromInput(text, board) {
   const tags = { 'c-green':'知识','c-blue':'工作','c-purple':'偏好','c-orange':'生活','c-yellow':'情感','c-red':'关系' };
   const bw   = window.innerWidth;
   const bh   = window.innerHeight;
-  const noteW = 168;
-  const px   = 180 + Math.random() * (bw - 360 - noteW);
+  const px   = 180 + Math.random() * (bw - 360 - 168);
   const py   = bh * 0.62 + Math.random() * (bh * 0.13);
   const r    = -3 + Math.random() * 6;
   const el   = document.createElement('div');
@@ -166,7 +166,7 @@ function createNoteFromInput(text, board) {
   el.style.cssText = `position:absolute;left:0;top:0;transform:translate(${px}px,${py}px) rotate(${r}deg) scale(0.3);opacity:0;will-change:transform;z-index:100;transition:transform .4s cubic-bezier(.34,1.56,.64,1),opacity .3s ease;`;
   el.innerHTML = `<div class="s-pin"></div><div class="s-badge"><div class="s-dot"></div>${tags[cls]}</div>${text}<div class="s-time">刚刚</div>`;
   board.appendChild(el);
-  const fill = injectProgress(el, 'fresh');
+  injectProgress(el, 'fresh');
   el.dataset.progPaused = 'true';
   requestAnimationFrame(() => requestAnimationFrame(() => {
     el.style.transform = `translate(${px}px,${py}px) rotate(${r}deg) scale(1)`;
@@ -178,43 +178,46 @@ function createNoteFromInput(text, board) {
   setTimeout(() => checkMergeHint(board), 100);
 }
 
-// ── ✦ 新增：合并演示 —— 注入3张"工作"标签便利贴后触发合并流程 ──
+// [FIX] 修复 getBadgeTag：克隆节点移除 dot 后读纯文字，消除空格干扰
+function getBadgeTag(note) {
+  const badge = note.querySelector('.s-badge');
+  if (!badge) return '';
+  const clone = badge.cloneNode(true);
+  clone.querySelector('.s-dot')?.remove();
+  return clone.textContent.trim();
+}
+
+// ── 合并演示：注入3张「工作」便利贴触发合并流程 ──
 function triggerMergeDemo(board) {
   const demoNotes = [
-    { text: '完成记忆宫殿原型设计稿', tag: '工作', cls: 'c-blue', r: -2 },
-    { text: '整理黑客松评审材料', tag: '工作', cls: 'c-blue', r: 1.5 },
-    { text: '与团队同步产品方向', tag: '工作', cls: 'c-blue', r: -1 },
+    { text: '完成记忆宫殿原型设计稿', tag: '工作', cls: 'c-blue', r: -2   },
+    { text: '整理黑客松评审材料',     tag: '工作', cls: 'c-blue', r:  1.5 },
+    { text: '与团队同步产品方向',     tag: '工作', cls: 'c-blue', r: -1   },
   ];
-  const bw = window.innerWidth;
   const bh = window.innerHeight;
-  const noteW = 168;
 
   demoNotes.forEach((d, i) => {
-    const px = 200 + i * 190 + Math.random() * 30;
-    const py = bh * 0.42 + Math.random() * (bh * 0.12);
+    const px = 200 + i * 200 + Math.random() * 30;
+    const py = bh * 0.38 + Math.random() * (bh * 0.1);
     const el = document.createElement('div');
     el.className = `sticky-note ${d.cls} decay-fresh`;
     el.dataset.decay = 'fresh';
     el.dataset.px = px; el.dataset.py = py; el.dataset.r = d.r;
-    el.style.cssText = `position:absolute;left:0;top:0;transform:translate(${px}px,${py}px) rotate(${d.r}deg) scale(0.2);opacity:0;will-change:transform;z-index:100;transition:transform .5s cubic-bezier(.34,1.56,.64,1) ${i * 0.18}s, opacity .35s ease ${i * 0.18}s;`;
+    el.style.cssText = `position:absolute;left:0;top:0;transform:translate(${px}px,${py}px) rotate(${d.r}deg) scale(0.2);opacity:0;will-change:transform;z-index:100;transition:transform .5s cubic-bezier(.34,1.56,.64,1) ${i*0.18}s,opacity .35s ease ${i*0.18}s;`;
     el.innerHTML = `<div class="s-pin"></div><div class="s-badge"><div class="s-dot"></div>${d.tag}</div>${d.text}<div class="s-time">刚刚</div>`;
     board.appendChild(el);
     injectProgress(el, 'fresh');
     el.dataset.progPaused = 'true';
-
     requestAnimationFrame(() => requestAnimationFrame(() => {
       el.style.transform = `translate(${px}px,${py}px) rotate(${d.r}deg) scale(1)`;
-      el.style.opacity = '1';
+      el.style.opacity   = '1';
     }));
-    setTimeout(() => {
-      el.style.transition = '';
-      startNoteFloat(el, Math.random() * 10);
-    }, 500 + i * 180);
+    setTimeout(() => { el.style.transition = ''; startNoteFloat(el, Math.random() * 10); }, 500 + i * 180);
     setupDrag(el, { showToast, startNoteFloat, stopNoteFloat });
   });
 
-  // 注入完成后触发合并提示
-  setTimeout(() => checkMergeHint(board), 700);
+  // 等入场动画跑完再检测，确保 DOM 已稳定
+  setTimeout(() => checkMergeHint(board), 950);
   showToast('✦ 注入3条「工作」记忆，等待合并…', 'rgba(74,158,255,0.9)');
 }
 
@@ -225,25 +228,23 @@ function spawnMergeParticles(noteEls) {
   noteEls.forEach((el, noteIdx) => {
     const rect = el.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
+    const cy = rect.top  + rect.height / 2;
     for (let i = 0; i < 6; i++) {
-      const p = document.createElement('div');
+      const p    = document.createElement('div');
       p.className = 'merge-particle';
-      const startX = cx + (-16 + Math.random() * 32);
-      const startY = cy + (-10 + Math.random() * 20);
-      const endDX = targetX - startX + (-20 + Math.random() * 40);
-      const endDY = targetY - startY + (-10 + Math.random() * 20);
+      const sx   = cx + (-16 + Math.random() * 32);
+      const sy   = cy + (-10 + Math.random() * 20);
       const colors = ['rgba(255,200,80,0.9)','rgba(255,180,60,0.85)','rgba(255,220,120,0.9)','rgba(255,160,60,0.8)'];
-      const col = colors[Math.floor(Math.random() * colors.length)];
+      const col  = colors[Math.floor(Math.random() * colors.length)];
       const size = 3 + Math.random() * 5;
       const delay = noteIdx * 0.06 + Math.random() * 0.1;
-      const dur = 0.55 + Math.random() * 0.25;
+      const dur   = 0.55 + Math.random() * 0.25;
       p.style.cssText = [
-        `left:${startX}px`, `top:${startY}px`,
-        `width:${size}px`, `height:${size}px`,
-        `background:${col}`, `box-shadow:0 0 ${size * 2}px ${col}`,
-        `--mp-tx:${endDX}px`, `--mp-ty:${endDY}px`,
-        `--mp-dur:${dur}s`, `--mp-del:${delay}s`,
+        `left:${sx}px`,`top:${sy}px`,`width:${size}px`,`height:${size}px`,
+        `background:${col}`,`box-shadow:0 0 ${size*2}px ${col}`,
+        `--mp-tx:${targetX-sx+(-20+Math.random()*40)}px`,
+        `--mp-ty:${targetY-sy+(-10+Math.random()*20)}px`,
+        `--mp-dur:${dur}s`,`--mp-del:${delay}s`,
       ].join(';');
       document.body.appendChild(p);
       setTimeout(() => p.remove(), (delay + dur) * 1000 + 100);
@@ -258,15 +259,8 @@ function flashShelfMerge() {
   setTimeout(() => flash.remove(), 1300);
 }
 
-function getBadgeTag(note) {
-  const badge = note.querySelector('.s-badge');
-  if (!badge) return '';
-  const textNode = Array.from(badge.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
-  return textNode ? textNode.textContent.trim() : badge.textContent.trim();
-}
-
 function checkMergeHint(board) {
-  const notes = Array.from(board.querySelectorAll('.sticky-note'));
+  const notes  = Array.from(board.querySelectorAll('.sticky-note'));
   const tagMap = {};
   notes.forEach(n => {
     const tag = getBadgeTag(n);
@@ -274,8 +268,9 @@ function checkMergeHint(board) {
     if (!tagMap[tag]) tagMap[tag] = [];
     tagMap[tag].push(n);
   });
-  const hit = Object.entries(tagMap).find(([, els]) => els.length >= 3);
-  let hint = document.getElementById('merge-hint');
+  const hit  = Object.entries(tagMap).find(([, els]) => els.length >= 3);
+  let hint   = document.getElementById('merge-hint');
+
   if (hit) {
     const [hitTag, hitEls] = hit;
     if (!hint) {
@@ -289,14 +284,17 @@ function checkMergeHint(board) {
         <button class="mh-btn" id="merge-ignore">忽略</button>
       `;
       const sdz = document.getElementById('shelf-drop-zone');
-      if (sdz && sdz.parentNode) sdz.parentNode.insertBefore(hint, sdz);
+      if (sdz?.parentNode) sdz.parentNode.insertBefore(hint, sdz);
       else board.appendChild(hint);
       requestAnimationFrame(() => requestAnimationFrame(() => hint.classList.add('visible')));
+
       document.getElementById('merge-ignore').onclick = () => {
         hint.classList.remove('visible');
         setTimeout(() => hint.remove(), 350);
       };
+
       document.getElementById('merge-confirm').onclick = () => {
+        // 点击时重新扫描，拿最新列表
         const targetNotes = Array.from(board.querySelectorAll('.sticky-note'))
           .filter(n => getBadgeTag(n) === hitTag);
         const confirmBtn = document.getElementById('merge-confirm');
@@ -308,10 +306,8 @@ function checkMergeHint(board) {
             const sx = parseFloat(n.dataset.px) || 0;
             const sy = parseFloat(n.dataset.py) || 0;
             const r  = parseFloat(n.dataset.r)  || 0;
-            const targetLeft = window.innerWidth / 2 - sx;
-            const targetDown = window.innerHeight * 0.85 - sy;
-            n.style.transition = 'transform 0.75s cubic-bezier(.4,0,.2,1), opacity 0.65s ease, filter 0.5s ease';
-            n.style.transform  = `translate(${sx + targetLeft * 0.6}px,${sy + targetDown}px) rotate(${r + (-12 + Math.random() * 24)}deg) scale(0.2)`;
+            n.style.transition = 'transform 0.75s cubic-bezier(.4,0,.2,1),opacity 0.65s ease,filter 0.5s ease';
+            n.style.transform  = `translate(${sx+(window.innerWidth/2-sx)*0.6}px,${sy+(window.innerHeight*0.85-sy)}px) rotate(${r+(-12+Math.random()*24)}deg) scale(0.2)`;
             n.style.opacity    = '0';
             n.style.filter     = 'saturate(2.8) brightness(2.2)';
             n.style.zIndex     = '200';
@@ -319,35 +315,35 @@ function checkMergeHint(board) {
           }, i * 80);
         });
         setTimeout(() => flashShelfMerge(), targetNotes.length * 80 + 200);
-        setTimeout(() => {
-          showToast(`📚 「${hitTag}」记忆已合并升级至书架`, 'rgba(255,200,80,0.95)');
-        }, targetNotes.length * 80 + 350);
+        setTimeout(() => showToast(`📚 「${hitTag}」记忆已合并升级至书架`, 'rgba(255,200,80,0.95)'),
+          targetNotes.length * 80 + 350);
         hint.classList.remove('visible');
         setTimeout(() => hint.remove(), 350);
       };
     }
   } else if (hint) {
     hint.classList.remove('visible');
-    setTimeout(() => { if (hint.parentNode) hint.remove(); }, 350);
+    setTimeout(() => { hint.parentNode && hint.remove(); }, 350);
   }
 }
 
-// ── 书架层衰减时长 ──
 import { BOOK_STAGE_DURATION } from '../../utils/decay';
-const BOOK_DECAY_STAGES = ['fresh', 'cooling', 'fading', 'critical'];
 
 export default function LayerSticky({ isDemoMode }) {
-  const inited     = useRef(false);
-  const timersRef  = useRef({ decay1: null, decay2: null, bubble: null });
+  const inited    = useRef(false);
+  const timersRef = useRef({ decay1: null, decay2: null, bubble: null });
+  // [FIX] 用 ref 持久化 board 引用，供 JSX onClick 直接调用，绕开 getElementById 时机问题
+  const boardRef  = useRef(null);
 
   useEffect(() => {
     if (inited.current) return;
     inited.current = true;
     const board = document.getElementById('sticky-board');
     if (!board) return;
+    boardRef.current = board;  // 存入 ref
 
     TIME_BANDS.forEach(b => {
-      const el    = document.createElement('div');
+      const el = document.createElement('div');
       el.style.cssText = `position:absolute;left:0;right:0;top:${b.yFrom*100}%;height:${(b.yTo-b.yFrom)*100}%;background:${b.color};pointer-events:none;border-top:1px solid rgba(255,255,255,0.025);z-index:0;`;
       const label = document.createElement('div');
       label.style.cssText = `position:absolute;left:8px;top:6px;font-family:'Syne Mono',monospace;font-size:8px;letter-spacing:.15em;color:rgba(255,255,255,0.1);text-transform:uppercase;`;
@@ -364,20 +360,17 @@ export default function LayerSticky({ isDemoMode }) {
     }
     timersRef.current.bubble = setInterval(() => spawnBubble(board), 2200 + Math.random() * 800);
 
+    // 输入框绑定
     const input = document.getElementById('sib-input');
     const send  = document.getElementById('sib-send');
     const doSend = () => {
-      const v = input.value.trim();
+      const v = input?.value.trim();
       if (!v) return;
       createNoteFromInput(v, board);
       input.value = '';
     };
     if (send)  send.onclick = doSend;
     if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') doSend(); });
-
-    // ✦ 合并演示按钮
-    const mergeBtn = document.getElementById('merge-demo-btn');
-    if (mergeBtn) mergeBtn.onclick = () => triggerMergeDemo(board);
 
     return () => { clearInterval(timersRef.current.bubble); };
   }, []);
@@ -432,8 +425,14 @@ export default function LayerSticky({ isDemoMode }) {
         <div className="lh-sub">短期记忆 · 拖拽至底部升级书架 · 拖拽至顶部销毁</div>
       </div>
 
-      {/* ✦ 新增：合并演示入口按钮，固定在层级右上角 */}
-      <div className="merge-demo-entry" id="merge-demo-btn">
+      {/* [FIX] 直接用 JSX onClick + boardRef，完全绕开 getElementById 时机问题 */}
+      <div
+        className="merge-demo-entry"
+        onClick={() => {
+          const board = boardRef.current;
+          if (board) triggerMergeDemo(board);
+        }}
+      >
         <span className="mde-icon">✦</span>
         演示记忆合并
       </div>
@@ -457,7 +456,7 @@ export default function LayerSticky({ isDemoMode }) {
 
       <div className="sticky-input-wrap">
         <div className="sticky-input-box">
-          <div class="sib-pulse" />
+          <div className="sib-pulse" />
           <input className="sib-input" id="sib-input" placeholder="输入对话内容，实时生成便利贴记忆…" maxLength={80} />
           <div className="sib-send" id="sib-send">生成</div>
         </div>
