@@ -9,7 +9,6 @@ function hexRGB(hex) {
   return [r, g, b];
 }
 
-// ── Summon small graph ──────────────────────────────
 let sgT = 0, sgActiveNodes = [0], sgActIdx = 1;
 let _sgSearchPulse = false;
 let sgCtx, sgW, sgH;
@@ -35,14 +34,12 @@ function drawSummonGraph() {
   if (!sgCtx || !sgW) return;
   sgT += 0.005;
   sgCtx.clearRect(0, 0, sgW, sgH);
-
   const nds = SG_NODES.map((n, i) => ({
     ...n,
     px: n.x * sgW + Math.cos(sgT * 0.7 + i * 1.2) * 2.2,
     py: n.y * sgH + Math.sin(sgT       + i * 0.9) * 2.2,
     active: sgActiveNodes.includes(i),
   }));
-
   SG_EDGES.forEach(([a, b]) => {
     if (!nds[a].active || !nds[b].active) return;
     const na = nds[a], nb = nds[b];
@@ -54,7 +51,6 @@ function drawSummonGraph() {
     sgCtx.arc(na.px + (nb.px - na.px) * fp, na.py + (nb.py - na.py) * fp, 1.5, 0, Math.PI * 2);
     sgCtx.fillStyle = 'rgba(200,140,255,0.5)'; sgCtx.fill();
   });
-
   nds.forEach((n, i) => {
     if (!n.active) return;
     const col  = TAG_HEX[n.type] || '#fff';
@@ -62,25 +58,21 @@ function drawSummonGraph() {
     const searchBoost = _sgSearchPulse && (i % 3 === 0 || i === 0) ? 1 + 0.35 * Math.abs(Math.sin(sgT * 7)) : 1;
     const pulse = 0.9 + 0.1 * Math.sin(sgT * 1.4 + i * 0.7);
     const rs    = n.size * pulse * searchBoost;
-
     const glow = sgCtx.createRadialGradient(n.px, n.py, 0, n.px, n.py, rs * 3);
     glow.addColorStop(0, `rgba(${r},${g},${b},${0.13 * searchBoost})`);
     glow.addColorStop(1, 'transparent');
     sgCtx.fillStyle = glow; sgCtx.beginPath(); sgCtx.arc(n.px, n.py, rs * 3, 0, Math.PI * 2); sgCtx.fill();
-
     const grad = sgCtx.createRadialGradient(n.px - rs * 0.3, n.py - rs * 0.3, 0, n.px, n.py, rs);
     grad.addColorStop(0, `rgba(${r},${g},${b},0.95)`);
     grad.addColorStop(1, `rgba(${r},${g},${b},0.5)`);
     sgCtx.beginPath(); sgCtx.arc(n.px, n.py, rs, 0, Math.PI * 2);
     sgCtx.fillStyle = grad;
     sgCtx.shadowColor = col; sgCtx.shadowBlur = rs * 2.5; sgCtx.fill(); sgCtx.shadowBlur = 0;
-
     if (_sgSearchPulse && i === 0) {
       const ringR = rs + 5 * Math.abs(Math.sin(sgT * 5));
       sgCtx.beginPath(); sgCtx.arc(n.px, n.py, ringR, 0, Math.PI * 2);
       sgCtx.strokeStyle = `rgba(${r},${g},${b},0.35)`; sgCtx.lineWidth = 1; sgCtx.stroke();
     }
-
     sgCtx.fillStyle = 'rgba(255,255,255,0.7)';
     sgCtx.font = `${n.size > 10 ? 700 : 400} ${n.size * 0.68}px 'Syne'`;
     sgCtx.textAlign = 'center'; sgCtx.textBaseline = 'top'; sgCtx.shadowBlur = 0;
@@ -92,9 +84,7 @@ function drawSummonGraph() {
   });
 }
 
-// ── Beam canvas ──────────────────────────────────────
 let sbCtx, sbW, sbH, sbInterval;
-
 function initSummonBeam() {
   const c = document.getElementById('summon-beam-canvas');
   if (!c) return;
@@ -132,10 +122,7 @@ function drawBeam(bd) {
     sbCtx.fillStyle = bd.color; sbCtx.shadowBlur = 22; sbCtx.fill();
     sbCtx.restore();
     if (prog < 1) requestAnimationFrame(anim);
-    else {
-      beamArrival(ex, ey, r, g, b);
-      setTimeout(() => sbCtx.clearRect(0, 0, sbW, sbH), 900);
-    }
+    else { beamArrival(ex, ey, r, g, b); setTimeout(() => sbCtx.clearRect(0, 0, sbW, sbH), 900); }
   }
   anim();
 }
@@ -152,7 +139,6 @@ function beamArrival(x, y, r, g, b) {
   ripple();
 }
 
-// ── Component ──────────────────────────────────────
 let replyIdx = 0;
 
 export default function SummonOverlay() {
@@ -160,8 +146,8 @@ export default function SummonOverlay() {
   const [messages, setMessages] = useState([
     {
       type: 'ai',
-      bubble: '你好！我正在同时扫描你的三个记忆层级——<br>便利贴层的短期印象、书架层的沉淀知识，以及图书馆层的长期图谱。<br>你想召唤哪段记忆？',
-      source: { dot: 'var(--tag-id)', text: '扫描来源：图书馆层 · 核心自我节点 · 连接数 8' },
+      bubble: '你好！我正在同时扫描你的三个记忆层级——<br>便利贴层的短期印象、书架层的沉淀知识，以及档案馆层的长期图谱。<br>你想召唤哪段记忆？',
+      source: { dot: 'var(--tag-id)', text: '扫描来源：档案馆层 · 核心自我节点 · 连接数 8' },
     },
     { type: 'user', bubble: '帮我规划这周的健身计划' },
     {
@@ -169,7 +155,7 @@ export default function SummonOverlay() {
       bubble: '好的，我找到了你的相关记忆——<br>✦ <strong>力量训练偏好</strong>，每周3次<br>✦ <strong>膝盖注意</strong>，已自动规避深蹲<br>✦ <strong>早起习惯</strong>，建议安排在 7—9 点',
       sources: [
         { dotColor: 'var(--tag-life)', borderColor: 'rgba(255,159,67,0.2)', bg: 'rgba(255,159,67,0.05)', text: '书架层 · 健身计划 · 3天前更新' },
-        { dotColor: 'var(--tag-id)',   borderColor: 'rgba(155,107,255,0.2)', bg: 'rgba(155,107,255,0.05)', text: '图书馆 · 身体状况节点 · 膝盖注意 → 力量训练' },
+        { dotColor: 'var(--tag-id)',   borderColor: 'rgba(155,107,255,0.2)', bg: 'rgba(155,107,255,0.05)', text: '档案馆 · 身体状况节点 · 膝盖注意 → 力量训练' },
       ],
     },
   ]);
@@ -209,13 +195,11 @@ export default function SummonOverlay() {
 
   return (
     <>
-      {/* Summon button */}
       <div id="summon-btn" onClick={openSummon}>
         <div className="summon-pulse" />
         记忆召唤
       </div>
 
-      {/* Overlay */}
       <div id="summon-overlay" className={open ? 'open' : ''}>
         <div id="summon-bg" onClick={closeSummon} />
         <div id="summon-halo" />
@@ -224,7 +208,6 @@ export default function SummonOverlay() {
         <div id="summon-panel">
           <div id="summon-close" onClick={closeSummon}>✕</div>
 
-          {/* Left: chat */}
           <div id="summon-chat">
             <div className="sc-header">
               <div className="sc-title">记忆召唤</div>
@@ -261,10 +244,11 @@ export default function SummonOverlay() {
               })}
             </div>
 
+            {/* ✦ 统一名称：档案馆 */}
             <div className="sc-layer-badges">
               <span className="sc-layer-badge sticky"><span className="sc-badge-dot" />便利贴·短期</span>
               <span className="sc-layer-badge shelf"><span className="sc-badge-dot" />书架·中期</span>
-              <span className="sc-layer-badge lib"><span className="sc-badge-dot" />图书馆·长期</span>
+              <span className="sc-layer-badge lib"><span className="sc-badge-dot" />档案馆·长期</span>
             </div>
 
             <div className="sc-input-row">
@@ -280,7 +264,6 @@ export default function SummonOverlay() {
             </div>
           </div>
 
-          {/* Right: mini graph */}
           <div id="summon-graph">
             <div className="sg-header">
               <div className="sg-title">实时记忆图谱</div>

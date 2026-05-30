@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { NODES, EDGES, TAG_HEX, TAG_NAMES } from '../../data/graphNodes';
+import { BOOKS } from '../../data/books';
+import { STICKY_DATA } from '../../data/stickyNotes';
 
 function hexRGB(hex) {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -9,10 +11,9 @@ function hexRGB(hex) {
 }
 
 let activeFilter = null;
-let tlValue      = 1;
+let tlValue      = 1;   // 0 = 6个月前, 1 = 今天
 let searchStr    = '';
 
-// 获取某节点所有连接节点的标签
 function getConnectedLabels(nodeId) {
   return EDGES
     .filter(([a, b]) => a === nodeId || b === nodeId)
@@ -21,40 +22,46 @@ function getConnectedLabels(nodeId) {
     .join('、');
 }
 
-// ── 档案卡片浮层 ──
-function ArchiveCard({ node, onClose }) {
+// ── 档案卡片（打通书架 + 便利贴的关联记忆）──
+function ArchiveCard({ node, onClose, onNavigate }) {
   const col     = TAG_HEX[node.type] || '#fff';
   const tagName = TAG_NAMES[node.type] || node.type;
   const connectedCount = EDGES.filter(([a, b]) => a === node.id || b === node.id).length;
   const connectedLabels = getConnectedLabels(node.id);
   const archiveNum = String(node.id + 1).padStart(3, '0');
 
+  // 关联书架书目
+  const relatedBooks = BOOKS.filter(b =>
+    (node.relatedBooks || []).includes(b.title) ||
+    (node.type === b.tag)
+  ).slice(0, 3);
+
+  // 关联便利贴（按 tag 交叉）
+  const TAG_ZH_MAP = { id: '偏好', work: '工作', know: '知识', life: '生活', rel: '关系', emo: '情感' };
+  const relatedStickies = STICKY_DATA.filter(s =>
+    (node.relatedStickies || []).includes(s.tag) ||
+    s.tag === TAG_ZH_MAP[node.type]
+  ).slice(0, 3);
+
   return (
     <div className="archive-card-overlay" onClick={onClose}>
       <div className="archive-card" onClick={e => e.stopPropagation()}>
-
-        {/* 卡片顶部：档案编号条 */}
         <div className="ac-topbar" style={{ borderColor: col + '40' }}>
           <div className="ac-file-icon">📁</div>
           <div className="ac-id-block">
             <span className="ac-id-label">档案编号</span>
             <span className="ac-id-num" style={{ color: col }}># {archiveNum}</span>
           </div>
-          <div className="ac-type-badge" style={{ borderColor: col + '50', color: col, background: col + '12' }}>
-            {tagName}
-          </div>
+          <div className="ac-type-badge" style={{ borderColor: col + '50', color: col, background: col + '12' }}>{tagName}</div>
           <button className="ac-close" onClick={onClose}>✕</button>
         </div>
 
-        {/* 卡片主体 */}
         <div className="ac-body">
           <div className="ac-title-row">
             <div className="ac-node-dot" style={{ background: col, boxShadow: `0 0 10px ${col}` }} />
             <div className="ac-title">{node.label}</div>
           </div>
-
           <div className="ac-divider" style={{ background: `linear-gradient(90deg, ${col}40, transparent)` }} />
-
           <div className="ac-meta-grid">
             <div className="ac-meta-item">
               <span className="ac-meta-label">归档时间</span>
@@ -82,36 +89,69 @@ function ArchiveCard({ node, onClose }) {
           )}
 
           <div className="ac-divider" style={{ background: `linear-gradient(90deg, ${col}30, transparent)` }} />
-
           <div className="ac-content-block">
             <span className="ac-meta-label">档案内容</span>
             <p className="ac-content-text">{node.content || node.desc}</p>
           </div>
+
+          {/* ✦ 跨层打通：关联书架记忆 */}
+          {relatedBooks.length > 0 && (
+            <div className="ac-cross-layer">
+              <span className="ac-meta-label">📚 书架层关联</span>
+              <div className="ac-cross-items">
+                {relatedBooks.map(b => (
+                  <div key={b.title} className="ac-cross-item" onClick={() => { onClose(); onNavigate(2); }}>
+                    <div className="aci-dot" style={{ background: TAG_HEX[b.tag] || '#fff' }} />
+                    <span className="aci-title">{b.title}</span>
+                    <span className="aci-tag">{b.decay}</span>
+                    <span className="aci-arrow">→</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ✦ 跨层打通：关联便利贴 */}
+          {relatedStickies.length > 0 && (
+            <div className="ac-cross-layer">
+              <span className="ac-meta-label">🗒 便利贴层关联</span>
+              <div className="ac-cross-items">
+                {relatedStickies.map((s, i) => (
+                  <div key={i} className="ac-cross-item" onClick={() => { onClose(); onNavigate(1); }}>
+                    <div className="aci-dot" style={{ background: 'rgba(80,220,180,0.8)' }} />
+                    <span className="aci-title">{s.text.slice(0, 18)}{s.text.length > 18 ? '…' : ''}</span>
+                    <span className="aci-tag">{s.decay}</span>
+                    <span className="aci-arrow">→</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* 卡片底部操作 */}
         <div className="ac-footer">
           <button className="ac-btn edit">编辑</button>
           <button className="ac-btn mark" style={{ borderColor: col + '60', color: col }}>★ 标记重要</button>
           <button className="ac-btn del">删除</button>
         </div>
-
-        {/* 左侧装饰条 */}
         <div className="ac-left-strip" style={{ background: `linear-gradient(180deg, ${col}, ${col}40)` }} />
       </div>
     </div>
   );
 }
 
-export default function LayerLibrary() {
+export default function LayerLibrary({ onNavigate }) {
   const inited    = useRef(false);
   const animT     = useRef(0);
   const gNodes    = useRef([]);
   const ctxRef    = useRef(null);
   const dimRef    = useRef({ w: 0, h: 0 });
   const [activeNode, setActiveNode] = useState(null);
-  // 用于在 canvas click 里访问最新 gNodes
   const gNodesRef = useRef([]);
+
+  // ✦ 节点点亮动画状态：记录每个节点上次可见性，用于触发点亮
+  const prevAlphaRef = useRef({});
+  const lightUpRef   = useRef({}); // nodeId -> { start, duration }
 
   useEffect(() => {
     if (inited.current) return;
@@ -141,11 +181,10 @@ export default function LayerLibrary() {
     window.addEventListener('resize', resize);
     setTimeout(resize, 50);
 
-    // ── 分类标签（替换 legend）──
+    // ── 分类标签 ──
     const leg = document.getElementById('lib-legend');
     if (leg) {
       leg.innerHTML = '';
-      // 全部按钮
       const allBtn = document.createElement('div');
       allBtn.className = 'll-item active-filter';
       allBtn.dataset.tag = 'all';
@@ -157,7 +196,6 @@ export default function LayerLibrary() {
         allBtn.classList.add('active-filter');
       };
       leg.appendChild(allBtn);
-
       Object.entries(TAG_NAMES).forEach(([k, v]) => {
         const d = document.createElement('div');
         d.className = 'll-item';
@@ -179,7 +217,7 @@ export default function LayerLibrary() {
       });
     }
 
-    // ── tooltip（hover）──
+    // ── tooltip ──
     canvas.addEventListener('mousemove', e => {
       const rect = canvas.getBoundingClientRect();
       const mx = e.clientX - rect.left, my = e.clientY - rect.top;
@@ -205,14 +243,12 @@ export default function LayerLibrary() {
       }
     });
 
-    // ── 节点点击 → 档案卡片 ──
     canvas.addEventListener('click', e => {
       const rect = canvas.getBoundingClientRect();
       const mx = e.clientX - rect.left, my = e.clientY - rect.top;
       for (const n of gNodesRef.current) {
         if (Math.hypot(n.px - mx, n.py - my) < n.size + 8) {
           setActiveNode(n);
-          // 隐藏 tooltip
           const tt = document.getElementById('node-tooltip');
           if (tt) tt.style.opacity = '0';
           return;
@@ -220,28 +256,48 @@ export default function LayerLibrary() {
       }
     });
 
-    // ── timeline ──
+    // ✦ 时间轴真实拖动——完整重写，支持 pointer capture
     const track = document.getElementById('lt-track');
     if (track) {
       let tlDragging = false;
-      const updateTL = (e) => {
+
+      const updateTL = (clientX) => {
         const r   = track.getBoundingClientRect();
-        const pct = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+        const pct = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+        const prevTL = tlValue;
         tlValue = pct;
-        document.getElementById('lt-fill').style.width   = (pct * 100) + '%';
-        document.getElementById('lt-handle').style.right = ((1 - pct) * 100) + '%';
+
+        const fillEl   = document.getElementById('lt-fill');
+        const handleEl = document.getElementById('lt-handle');
+        if (fillEl)   fillEl.style.width  = (pct * 100) + '%';
+        if (handleEl) handleEl.style.left = `calc(${pct * 100}% - 8px)`;
+
+        // ✦ 更新时间轴日期标签
+        const dateLabel = document.getElementById('lt-current-date');
+        if (dateLabel) {
+          const months = Math.round((1 - pct) * 6);
+          dateLabel.textContent = months === 0 ? '今天' : `${months}个月前`;
+        }
       };
-      track.addEventListener('pointerdown', e => { tlDragging = true; track.setPointerCapture(e.pointerId); updateTL(e); });
-      track.addEventListener('pointermove', e => { if (tlDragging) updateTL(e); });
+
+      track.addEventListener('pointerdown', e => {
+        tlDragging = true;
+        track.setPointerCapture(e.pointerId);
+        updateTL(e.clientX);
+      });
+      track.addEventListener('pointermove', e => {
+        if (!tlDragging) return;
+        updateTL(e.clientX);
+      });
       track.addEventListener('pointerup',     () => { tlDragging = false; });
       track.addEventListener('pointercancel', () => { tlDragging = false; });
     }
 
-    // ── search ──
+    // ── 搜索 ──
     const searchEl = document.getElementById('lib-search');
     if (searchEl) searchEl.addEventListener('input', e => { searchStr = e.target.value.toLowerCase(); });
 
-    // ── abyss particles ──
+    // ── 深渊粒子 ──
     const abyssEl = document.getElementById('abyss-particles');
     if (abyssEl && abyssEl.childElementCount === 0) {
       const types = ['bio', 'abyssal', 'ember'];
@@ -252,27 +308,46 @@ export default function LayerLibrary() {
         p.style.cssText = [
           `width:${sz}px`, `height:${sz}px`,
           `left:${Math.random() * 100}%`, `top:${Math.random() * 100}%`,
-          `--d:${12 + Math.random() * 14}s`,
-          `--del:${Math.random() * 10}s`,
-          `--o1:${0.06 + Math.random() * 0.12}`,
-          `--o2:${0.3 + Math.random() * 0.4}`,
-          `--tx:${-30 + Math.random() * 60}px`,
-          `--ty:${-40 + Math.random() * 30}px`,
+          `--d:${12 + Math.random() * 14}s`, `--del:${Math.random() * 10}s`,
+          `--o1:${0.06 + Math.random() * 0.12}`, `--o2:${0.3 + Math.random() * 0.4}`,
+          `--tx:${-30 + Math.random() * 60}px`, `--ty:${-40 + Math.random() * 30}px`,
         ].join(';');
         abyssEl.appendChild(p);
       }
     }
 
-    // ── draw loop ──
+    // ── 时间轴入场演示动画（拖动提示）──
+    setTimeout(() => {
+      const handle = document.getElementById('lt-handle');
+      const fill   = document.getElementById('lt-fill');
+      if (!handle || !fill) return;
+      // 从右往左再回来，提示用户可以拖动
+      handle.style.transition = 'left 0.8s ease-in-out';
+      fill.style.transition   = 'width 0.8s ease-in-out';
+      handle.style.left = '30%';
+      fill.style.width  = '30%';
+      setTimeout(() => {
+        handle.style.left = 'calc(100% - 8px)';
+        fill.style.width  = '100%';
+        setTimeout(() => {
+          handle.style.transition = '';
+          fill.style.transition   = '';
+          tlValue = 1;
+        }, 800);
+      }, 900);
+    }, 800);
+
+    // ── getNodeAlpha：基于节点自己的 archiveTimestamp ──
     function getNodeAlpha(n) {
       let a = 1;
       if (activeFilter && n.type !== activeFilter) a *= 0.1;
       if (searchStr && !n.label.toLowerCase().includes(searchStr) && !(n.desc || '').toLowerCase().includes(searchStr)) a *= 0.12;
-      const nodeAge = NODES.indexOf(n) / NODES.length;
-      if (nodeAge > (tlValue + 0.05)) a *= 0.08;
+      // ✦ 核心改动：用节点的 archiveTimestamp 对比时间轴值
+      if ((n.archiveTimestamp || 0) > tlValue + 0.01) a *= 0.04;
       return a;
     }
 
+    // ── draw loop ──
     function draw() {
       requestAnimationFrame(draw);
       const { w, h } = dimRef.current;
@@ -303,22 +378,53 @@ export default function LayerLibrary() {
         const alpha = getNodeAlpha(n);
         const col   = TAG_HEX[n.type] || '#fff';
         const [r, g, b] = hexRGB(col);
-        ctx.globalAlpha = alpha;
 
-        const og = ctx.createRadialGradient(n.px, n.py, 0, n.px, n.py, n.size * 2.8);
-        og.addColorStop(0, `rgba(${r},${g},${b},.12)`);
+        // ✦ 检测节点从"隐藏"变为"可见"时触发点亮动画
+        const prevAlpha = prevAlphaRef.current[n.id] || 0;
+        if (prevAlpha < 0.3 && alpha > 0.5) {
+          lightUpRef.current[n.id] = { start: Date.now(), duration: 600 };
+        }
+        prevAlphaRef.current[n.id] = alpha;
+
+        // ✦ 点亮进度（0→1→0，爆发感）
+        let lightUp = 0;
+        const lu = lightUpRef.current[n.id];
+        if (lu) {
+          const prog = Math.min(1, (Date.now() - lu.start) / lu.duration);
+          // 先快速升到1，再慢慢降回0，用 sin 曲线
+          lightUp = Math.sin(prog * Math.PI);
+          if (prog >= 1) delete lightUpRef.current[n.id];
+        }
+
+        ctx.globalAlpha = Math.max(alpha, lightUp * 0.6 + alpha);
+
+        // 节点外光晕（点亮时放大）
+        const glowR = n.size * (2.8 + lightUp * 3);
+        const og = ctx.createRadialGradient(n.px, n.py, 0, n.px, n.py, glowR);
+        og.addColorStop(0, `rgba(${r},${g},${b},${(0.12 + lightUp * 0.35)})`);
         og.addColorStop(1, 'transparent');
         ctx.fillStyle = og;
-        ctx.beginPath(); ctx.arc(n.px, n.py, n.size * 2.8, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(n.px, n.py, glowR, 0, Math.PI * 2); ctx.fill();
 
-        ctx.beginPath(); ctx.arc(n.px, n.py, n.size, 0, Math.PI * 2);
-        const ng = ctx.createRadialGradient(n.px - n.size * .3, n.py - n.size * .3, 0, n.px, n.py, n.size);
-        ng.addColorStop(0, `rgba(${r},${g},${b},.92)`);
-        ng.addColorStop(1, `rgba(${r},${g},${b},.5)`);
+        // 节点核心（点亮时 scale up）
+        const nodeR = n.size * (1 + lightUp * 0.45);
+        ctx.beginPath(); ctx.arc(n.px, n.py, nodeR, 0, Math.PI * 2);
+        const ng = ctx.createRadialGradient(n.px - nodeR * .3, n.py - nodeR * .3, 0, n.px, n.py, nodeR);
+        ng.addColorStop(0, `rgba(${r},${g},${b},${0.92 + lightUp * 0.08})`);
+        ng.addColorStop(1, `rgba(${r},${g},${b},0.5)`);
         ctx.fillStyle = ng; ctx.fill();
-        ctx.strokeStyle = `rgba(${r},${g},${b},.55)`;
-        ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.strokeStyle = `rgba(${r},${g},${b},${0.55 + lightUp * 0.4})`;
+        ctx.lineWidth = 1.5 + lightUp * 2; ctx.stroke();
 
+        // 点亮涟漪环
+        if (lightUp > 0.1) {
+          const ringR = nodeR + lightUp * n.size * 1.8;
+          ctx.beginPath(); ctx.arc(n.px, n.py, ringR, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(${r},${g},${b},${lightUp * 0.5})`;
+          ctx.lineWidth = 1; ctx.stroke();
+        }
+
+        // 标签文字
         ctx.fillStyle = `rgba(255,255,255,${0.82 * alpha})`;
         ctx.font = `${n.id === 0 ? 700 : 500} ${n.size * 0.72}px 'Syne'`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -342,6 +448,7 @@ export default function LayerLibrary() {
           <div className="library-header">
             <div>
               <div className="lib-title">
+                {/* ✦ 统一名称：档案馆 */}
                 档案馆<span>— 4000m · 午夜层 · 长期记忆归档</span>
               </div>
             </div>
@@ -352,7 +459,6 @@ export default function LayerLibrary() {
           </div>
         </div>
 
-        {/* 分类标签（替换原 legend，位置右侧） */}
         <div className="lib-legend" id="lib-legend" />
 
         <div className="node-tooltip" id="node-tooltip">
@@ -360,14 +466,18 @@ export default function LayerLibrary() {
           <div className="nt-type"   id="nt-type"  />
           <div className="nt-desc"   id="nt-desc"  />
           <div className="nt-conns"  id="nt-conns" />
-          <div className="nt-hint">点击查看完整档案</div>
+          <div className="nt-hint">点击查看完整档案 · 含关联记忆</div>
         </div>
 
+        {/* ✦ 时间轴完整重写：handle 用 left 定位，更直观 */}
         <div className="lib-timeline">
-          <div className="lt-label">归档时间轴 · 拖动回溯</div>
+          <div className="lt-label-row">
+            <span className="lt-label">归档时间轴 · 拖动回溯</span>
+            <span className="lt-current-date" id="lt-current-date">今天</span>
+          </div>
           <div className="lt-track" id="lt-track">
             <div className="lt-fill"   id="lt-fill"   style={{ width: '100%' }} />
-            <div className="lt-handle" id="lt-handle" style={{ right: 0 }} />
+            <div className="lt-handle" id="lt-handle" style={{ left: 'calc(100% - 8px)' }} />
           </div>
           <div className="lt-ticks">
             <span className="lt-tick">6个月前</span>
@@ -375,12 +485,16 @@ export default function LayerLibrary() {
             <span className="lt-tick">1个月前</span>
             <span className="lt-tick">今天</span>
           </div>
+          <div className="lt-hint">← 向左拖动，看过去的自己</div>
         </div>
       </div>
 
-      {/* 档案卡片浮层 */}
       {activeNode && (
-        <ArchiveCard node={activeNode} onClose={() => setActiveNode(null)} />
+        <ArchiveCard
+          node={activeNode}
+          onClose={() => setActiveNode(null)}
+          onNavigate={onNavigate}
+        />
       )}
     </>
   );

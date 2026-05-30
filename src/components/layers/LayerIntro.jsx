@@ -54,7 +54,8 @@ export default function LayerIntro({ onNavigate }) {
           <span className="t1">Memory</span>
           <span className="t2">Palace</span>
         </div>
-        <p className="intro-sub">向下潜入，触及记忆的最深处</p>
+        {/* ✦ 修改核心文案，命中产品主张 */}
+        <p className="intro-sub">AI 记住了你什么？现在你可以看见了。</p>
 
         <div className="dive-nav">
           {DIVE_ENTRIES.map((e) => (

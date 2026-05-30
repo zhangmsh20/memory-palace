@@ -3,9 +3,17 @@ import { BOOKS, TAG_COLORS } from '../../data/books';
 import { BOOK_STAGE_DURATION } from '../../utils/decay';
 
 const BOOK_DECAY_STAGES = ['fresh', 'cooling', 'fading', 'critical'];
-
-// 静态模式下各衰减阶段进度条初始显示比例
 const STATIC_PROGRESS = { fresh: 0.15, cooling: 0.55, fading: 0.80, critical: 1.0 };
+
+// ── 场景模式配置 ──
+const SCENE_MODES = [
+  { id: 'reset',    icon: '○',  label: '全部显示',   tags: null },
+  { id: 'cooking',  icon: '🍳', label: '想做饭了',   tags: ['life'] },
+  { id: 'work',     icon: '💼', label: '工作模式',   tags: ['work', 'know'] },
+  { id: 'fitness',  icon: '🏃', label: '健身计划',   tags: ['life'],  bookFilter: ['健身计划', '用户研究笔记'] },
+  { id: 'emotion',  icon: '😊', label: '情绪复盘',   tags: ['emo', 'id'] },
+  { id: 'knowledge',icon: '📚', label: '知识整理',   tags: ['know'] },
+];
 
 function showToast(msg, col = 'rgba(80,220,180,0.9)') {
   const t = document.createElement('div');
@@ -22,7 +30,6 @@ function makeDust(decay) {
   ).join('');
 }
 
-// ── 动态模式书本计时器 ──
 function runBookTimer(el) {
   function tick() {
     if (!el.isConnected) return;
@@ -70,33 +77,27 @@ function initBookDecay(el, i, isDemoMode) {
   el.dataset.stage      = initDecay;
   el.dataset.stageStart = Date.now();
   el.dataset.stageMs    = BOOK_STAGE_DURATION[initDecay] + i * 1200 + Math.random() * 5000;
-  el.dataset.paused     = isDemoMode ? 'false' : 'true';
-
+  el.dataset.paused     = 'true';
   const prog = document.createElement('div');
   prog.className = 'book-decay-prog';
   prog.innerHTML = '<div class="bdp-fill"></div>';
   el.querySelector('.book-spine').appendChild(prog);
-
   const fill = prog.querySelector('.bdp-fill');
-
   if (initDecay === 'critical') {
     fill.style.width = '100%';
     fill.style.background = 'rgba(255,80,80,0.7)';
     fill.style.animation = 'critFill 1.8s ease-in-out infinite';
     return;
   }
-
-  if (isDemoMode) {
-    runBookTimer(el);
-  } else {
-    const staticPct = STATIC_PROGRESS[initDecay] || 0.15;
-    fill.style.width = (staticPct * 100) + '%';
-  }
+  const staticPct = STATIC_PROGRESS[initDecay] || 0.15;
+  fill.style.width = (staticPct * 100) + '%';
 }
 
 export default function LayerShelf({ isDemoMode }) {
   const inited  = useRef(false);
   const [openBook, setOpenBook] = useState(null);
+  // ✦ 当前激活模式 state（用于按钮高亮）
+  const [activeScene, setActiveScene] = useState('reset');
 
   // ── 初始化 ──
   useEffect(() => {
@@ -133,21 +134,31 @@ export default function LayerShelf({ isDemoMode }) {
           </div>
         </div>`;
       rows[b.row].appendChild(el);
-
       initBookDecay(el, i, false);
 
-      // 点击书脊 → 打开书页
       el.querySelector('.book-spine').addEventListener('click', (e) => {
         e.stopPropagation();
         setOpenBook(BOOKS[i]);
       });
 
-      // hover card（左弹）
+      // ✦ 修复 hover 跳动 bug：
+      // 核心原因：mouseenter/mouseleave 触发在书本子元素（book-cover, book-top）之间反复跳，
+      // 导致 card-open 类被反复加减。解决方案：用 contains 检查 relatedTarget 是否在书本内部。
       let closeTimer = null;
-      const openCard  = () => { clearTimeout(closeTimer); el.classList.add('card-open', 'lift-hover'); };
-      const closeCard = () => { closeTimer = setTimeout(() => el.classList.remove('card-open', 'lift-hover'), 120); };
+      const openCard = () => {
+        clearTimeout(closeTimer);
+        el.classList.add('card-open', 'lift-hover');
+      };
+      const closeCard = (e) => {
+        // 如果鼠标移向的目标仍在这个 book 元素内部，不触发关闭
+        if (e && el.contains(e.relatedTarget)) return;
+        closeTimer = setTimeout(() => el.classList.remove('card-open', 'lift-hover'), 120);
+      };
+
+      // ✦ 用 mouseleave 替代 mouseleave，并检查 relatedTarget
       el.addEventListener('mouseenter', openCard);
       el.addEventListener('mouseleave', closeCard);
+
       const card = el.querySelector('.book-card');
       card.addEventListener('mouseenter', () => clearTimeout(closeTimer));
       card.addEventListener('mouseleave', closeCard);
@@ -179,7 +190,6 @@ export default function LayerShelf({ isDemoMode }) {
         showToast('🔥 记忆已销毁', 'var(--tag-rel)');
       });
 
-      // 打开按钮（同书脊）
       card.querySelector('[data-open]').addEventListener('click', (e) => {
         e.stopPropagation();
         setOpenBook(BOOKS[i]);
@@ -202,34 +212,47 @@ export default function LayerShelf({ isDemoMode }) {
     });
   }, [isDemoMode]);
 
-  function triggerScene(type) {
-    if (type === 'reset') {
-      document.querySelectorAll('.book.triggered').forEach(b => {
-        b.classList.remove('triggered');
-        b.style.transform = '';
-        b.style.opacity   = '';
-      });
-      document.querySelectorAll('.book').forEach(b => {
-        b.style.opacity    = '';
-        b.style.transition = '';
-      });
-      document.getElementById('shelf-overlay').classList.remove('on');
-      return;
-    }
-    document.getElementById('shelf-overlay').classList.add('on');
-    const tagMap = { cooking: ['life'], work: ['work', 'know'] };
-    const tags   = tagMap[type] || [];
+  // ✦ 重构场景切换：每次先完整清理内联样式，再下一帧应用新状态，彻底修复切换 bug
+  function applyScene(sceneId) {
+    setActiveScene(sceneId);
+
+    // 第一步：同步清除所有遗留内联样式和 class
     document.querySelectorAll('.book').forEach(b => {
-      const idx = parseInt(b.dataset.idx);
-      if (idx >= 0 && idx < BOOKS.length) {
-        if (tags.includes(BOOKS[idx].tag)) b.classList.add('triggered');
-        else { b.style.opacity = '.2'; b.style.transition = 'opacity .5s'; }
-      }
+      b.classList.remove('triggered');
+      b.style.removeProperty('opacity');
+      b.style.removeProperty('transition');
+      b.style.removeProperty('filter');
     });
-    // 静态模式：5秒后自动重置
-    if (!isDemoMode) {
-      setTimeout(() => triggerScene('reset'), 5000);
-    }
+    document.getElementById('shelf-overlay')?.classList.remove('on');
+
+    if (sceneId === 'reset') return;
+
+    const mode = SCENE_MODES.find(m => m.id === sceneId);
+    if (!mode || !mode.tags) return;
+
+    // 第二步：RAF 确保 DOM 清理已渲染，再应用新状态
+    requestAnimationFrame(() => {
+      document.getElementById('shelf-overlay')?.classList.add('on');
+      document.querySelectorAll('.book').forEach(b => {
+        const idx = parseInt(b.dataset.idx);
+        if (idx < 0 || idx >= BOOKS.length) return;
+        const book = BOOKS[idx];
+        const tagMatch = mode.tags.includes(book.tag);
+        // 如果有 bookFilter，额外按书名过滤
+        const titleMatch = mode.bookFilter
+          ? mode.bookFilter.some(t => book.title.includes(t))
+          : tagMatch;
+        const isActive = mode.bookFilter ? (tagMatch && titleMatch) || titleMatch : tagMatch;
+
+        if (isActive) {
+          b.classList.add('triggered');
+        } else {
+          b.style.opacity = '0.12';
+          b.style.transition = 'opacity .4s ease';
+          b.style.filter = 'saturate(0.2)';
+        }
+      });
+    });
   }
 
   return (
@@ -239,15 +262,27 @@ export default function LayerShelf({ isDemoMode }) {
         <div className="layer-header">
           <div className="lh-zone">CORAL REEF · —1000m</div>
           <div className="lh-title">书架</div>
-          <div className="lh-sub">中期记忆 · 点击书脊查阅 · 场景触发探出</div>
+          <div className="lh-sub">中期记忆 · 点击书脊查阅 · 场景模式聚焦</div>
         </div>
         <div className="shelf-room">
           <div className="bookshelf" id="bookshelf" />
           <div className="shelf-overlay" id="shelf-overlay" />
-          <div className="shelf-trigger">
-            <div className="trigger-pill primary"   onClick={() => triggerScene('cooking')}>🍳 想做饭了</div>
-            <div className="trigger-pill secondary" onClick={() => triggerScene('work')}>💼 工作模式</div>
-            <div className="trigger-pill reset"     onClick={() => triggerScene('reset')}>重置</div>
+
+          {/* ✦ 重构：统一的查看模式选择器 */}
+          <div className="shelf-scene-bar">
+            <span className="scene-bar-label">查看模式</span>
+            <div className="scene-pills">
+              {SCENE_MODES.map(m => (
+                <div
+                  key={m.id}
+                  className={`scene-pill ${activeScene === m.id ? 'active' : ''}`}
+                  onClick={() => applyScene(m.id)}
+                >
+                  <span className="sp-icon">{m.icon}</span>
+                  {m.label}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -270,7 +305,6 @@ function BookPage({ book, onClose }) {
   const [entries, setEntries] = useState(book.entries || []);
   const tagColor = TAG_COLORS[book.tag] || '#fff';
 
-  // 打开书页时锁住背景导航
   useEffect(() => {
     const ocean = document.getElementById('ocean');
     if (ocean) ocean.style.overflow = 'hidden';
@@ -282,28 +316,20 @@ function BookPage({ book, onClose }) {
     };
   }, []);
 
-  function deleteEntry(id) {
-    setEntries(prev => prev.filter(e => e.id !== id));
-  }
-  function toggleImportant(id) {
-    setEntries(prev => prev.map(e => e.id === id ? { ...e, important: !e.important } : e));
-  }
+  function deleteEntry(id) { setEntries(prev => prev.filter(e => e.id !== id)); }
+  function toggleImportant(id) { setEntries(prev => prev.map(e => e.id === id ? { ...e, important: !e.important } : e)); }
 
   return (
     <div className="book-page-overlay" onClick={onClose}>
       <div className="book-page-panel" onClick={e => e.stopPropagation()}>
-
         <div className="bp-left" style={{ borderColor: tagColor + '30' }}>
           <div className="bp-cover-strip" style={{ background: book.color }} />
           <div className="bp-meta">
             <div className="bp-tag-dot" style={{ background: tagColor }} />
-            <div className="bp-category" style={{ color: tagColor }}>
-              {book.tags.join(' · ')}
-            </div>
+            <div className="bp-category" style={{ color: tagColor }}>{book.tags.join(' · ')}</div>
           </div>
           <div className="bp-title">{book.title}</div>
           <div className="bp-summary">{book.summary}</div>
-
           <div className="bp-stats">
             <div className="bp-stat">
               <span className="bp-stat-num">{entries.length}</span>
@@ -314,62 +340,43 @@ function BookPage({ book, onClose }) {
               <span className="bp-stat-label">标记重要</span>
             </div>
           </div>
-
           <div className="bp-decay-badge" style={{ color: DECAY_COLOR[book.decay], borderColor: DECAY_COLOR[book.decay] + '40' }}>
             <span className="bp-decay-dot" style={{ background: DECAY_COLOR[book.decay] }} />
             {DECAY_LABEL[book.decay]}
           </div>
-
           <div className="bp-actions">
-            <div className="bp-action-btn archive" onClick={() => {
-              onClose();
-              showToast('📚 已压入档案馆');
-            }}>
+            <div className="bp-action-btn archive" onClick={() => { onClose(); showToast('📚 已压入档案馆'); }}>
               ↓ 压入档案馆
             </div>
-            <div className="bp-action-btn burn" onClick={() => {
-              onClose();
-              showToast('🔥 书籍已销毁', 'var(--tag-rel)');
-            }}>
+            <div className="bp-action-btn burn" onClick={() => { onClose(); showToast('🔥 书籍已销毁', 'var(--tag-rel)'); }}>
               🔥 销毁
             </div>
           </div>
         </div>
-
         <div className="bp-right">
           <div className="bp-right-header">
             <div className="bp-right-title">记忆条目</div>
             <div className="bp-right-hint">点击 ★ 标记重要 · 点击 × 删除</div>
           </div>
-
           <div className="bp-entries">
-            {entries.length === 0 && (
-              <div className="bp-empty">这本书的记忆已全部删除</div>
-            )}
+            {entries.length === 0 && <div className="bp-empty">这本书的记忆已全部删除</div>}
             {entries.map(e => (
               <div key={e.id} className={`bp-entry ${e.decay} ${e.important ? 'important' : ''}`}>
                 <div className="bp-entry-body">
                   <div className="bp-entry-text">{e.text}</div>
                   <div className="bp-entry-meta">
                     <span className="bp-entry-time">{e.time}</span>
-                    <span className="bp-entry-decay" style={{ color: DECAY_COLOR[e.decay] }}>
-                      {DECAY_LABEL[e.decay]}
-                    </span>
+                    <span className="bp-entry-decay" style={{ color: DECAY_COLOR[e.decay] }}>{DECAY_LABEL[e.decay]}</span>
                   </div>
                 </div>
                 <div className="bp-entry-actions">
-                  <button
-                    className={`bp-star ${e.important ? 'on' : ''}`}
-                    onClick={() => toggleImportant(e.id)}
-                    style={{ color: e.important ? '#ffd93d' : 'rgba(255,255,255,0.2)' }}
-                  >★</button>
+                  <button className={`bp-star ${e.important ? 'on' : ''}`} onClick={() => toggleImportant(e.id)} style={{ color: e.important ? '#ffd93d' : 'rgba(255,255,255,0.2)' }}>★</button>
                   <button className="bp-del" onClick={() => deleteEntry(e.id)}>×</button>
                 </div>
               </div>
             ))}
           </div>
         </div>
-
         <div className="bp-close" onClick={onClose}>✕</div>
       </div>
     </div>
