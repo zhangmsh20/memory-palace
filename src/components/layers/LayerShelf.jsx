@@ -172,6 +172,16 @@ export default function LayerShelf({ isDemoMode }) {
             if (next === 'critical') {
               fill.style.background = 'rgba(255,80,80,0.7)';
               fill.style.animation = 'critFill 1.8s ease-in-out infinite';
+              /* ★ 系统建议：critical 时提示用户提炼 */
+              if (!el.dataset.critSuggested) {
+                el.dataset.critSuggested = 'true';
+                setTimeout(() => {
+                  showToast(
+                    `「${BOOKS[parseInt(el.dataset.idx)]?.title}」已很久未翻开，要提炼一下吗？`,
+                    'rgba(255,160,80,0.85)'
+                  );
+                }, 600);
+              }
             }
           }
           /* 加灰尘 */
@@ -192,8 +202,8 @@ export default function LayerShelf({ isDemoMode }) {
     }, 2200);
   }
 
-  /* ── 提炼面板确认归档 ── */
-  function handleRefinementConfirm(imprint) {
+  /* ── 提炼面板确认 ── */
+  function handleRefinementConfirm(imprint, destOpt, forgot = false) {
     if (!refinementBook) return;
     /* 从 DOM 中找到对应书本并移除 */
     document.querySelectorAll('.book').forEach(el => {
@@ -205,7 +215,12 @@ export default function LayerShelf({ isDemoMode }) {
         setTimeout(() => el.remove(), 850);
       }
     });
-    showToast(`✦ 印记已沉入档案馆：${imprint.slice(0, 18)}…`);
+    if (forgot) {
+      showToast('～ 记忆已消散，未留下任何印记', 'rgba(255,255,255,0.3)');
+    } else {
+      const destLabel = destOpt?.label || '档案馆';
+      showToast(`✦ 印记已沉入${destLabel}：${imprint.slice(0, 18)}…`);
+    }
   }
 
   /* ── 初始化（与原版完全相同） ── */
@@ -237,7 +252,7 @@ export default function LayerShelf({ isDemoMode }) {
           <div class="bc-title">${b.title}</div>
           <div class="bc-summary">${b.summary}</div>
           <div class="bc-actions">
-            <div class="bc-btn archive" data-archive="${i}" title="提炼归档">↓</div>
+            <div class="bc-btn archive" data-archive="${i}" title="提炼">✦</div>
             <div class="bc-btn burn"    data-burn="${i}"    title="销毁记忆">🔥</div>
             <div class="bc-btn open"    data-open="${i}"    title="打开查阅">⬜</div>
           </div>
@@ -486,7 +501,7 @@ function BookPage({ book, onClose, onOpenRefinement }) {
               onClick={() => onOpenRefinement(book)}
               title="打开记忆提炼面板，决定留下什么"
             >
-              ✦ 提炼归档
+              ✦ 提炼
             </div>
             <div className="bp-action-btn burn" onClick={() => { onClose(); showToast('🔥 书籍已销毁', 'var(--tag-rel)'); }}>
               🔥 销毁

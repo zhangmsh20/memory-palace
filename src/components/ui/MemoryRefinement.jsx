@@ -1,41 +1,62 @@
 /**
- * MemoryRefinement.jsx — 记忆提炼面板
+ * MemoryRefinement.jsx — 记忆提炼面板（v0.5 两步式重构）
  *
- * 触发方式：从 LayerShelf 的 BookPage 里点击「↓ 压入档案馆」时，
- *   不直接关闭，而是调用 onRefinementOpen(book) 打开此面板。
+ * 触发方式：从 LayerShelf 的 BookPage 里点击「✦ 提炼」，
+ *   或 book-card 悬浮卡的「✦」按钮，调用 onRefinementOpen(book) 打开此面板。
  *
  * Props:
- *   book         — BOOKS 中的单条书本对象
- *   onClose      — () => void  关闭面板（不归档）
- *   onConfirm    — (imprint) => void  确认归档，imprint 是用户编辑好的印记文本
+ *   book      — BOOKS 中的单条书本对象（含 kind / destination / entries）
+ *   onClose   — () => void  关闭面板（不提炼）
+ *   onConfirm — (imprint, destination) => void  确认提炼，由父层移除书本+显示 toast
  *
- * 设计原则：
- *   左列  经历细节  — 书架原始 entries，可勾选/取消
- *   中列  提炼层    — 视觉"过滤膜"，勾选条目用实线箭头穿过，取消勾选的淡出消散
- *   右列  印记预览  — 实时合成预览文字，用户可直接编辑
+ * 两步式交互：
+ *   第一步「挑重点」— 展示 AI 筛选出的"关键条目"（important:true），
+ *                     用户勾选觉得值得记住的；全不选 → 进入"确认遗忘"分支
+ *   第二步「定形态」— 基于第一步的选择，AI 合成可编辑"印记"文本，
+ *                     用户确认去向（新建节点 / 合并入已有 / 附加为"我"标签）
  *
- * 动效（确认后，由父组件控制书本消失）：
- *   1. 右列文字放大发光 300ms
- *   2. 左列条目右飘 + 消失 500ms
- *   3. 面板整体下沉 400ms
- *   → onConfirm(imprint) 在步骤 1 结束后立即调用
+ * 确认动效（三步，确认后由父层控制书本消失）：
+ *   1. 印记卡放大发光 300ms
+ *   2. 条目向右飘散消失 500ms
+ *   3. 面板整体下沉淡出 400ms → onConfirm(imprint, destination)
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 /* ─────────────────────────────────────────
-   工具：把 entries 列表合成默认印记文本
-   规则：取所有 important=true 的条目摘要，
-         再补第一条普通条目，最后拼成一句话
+   工具：把选中条目合成默认印记文本
 ───────────────────────────────────────── */
-function synthesizeImprint(entries, bookTitle) {
-  const important = entries.filter(e => e.important && e.checked !== false);
-  const normal    = entries.filter(e => !e.important && e.checked !== false);
-  const picks     = [...important, ...normal].slice(0, 3);
-  if (picks.length === 0) return `关于「${bookTitle}」的核心记忆`;
-  if (picks.length === 1) return picks[0].text;
-  const last = picks.pop();
-  return picks.map(e => e.text.split('：')[0] || e.text.slice(0, 12)).join('、') + `；${last.text.slice(0, 20)}`;
+function synthesizeImprint(picked, bookTitle) {
+  if (picked.length === 0) return '';
+  if (picked.length === 1) return picked[0].text;
+  const last = picked[picked.length - 1];
+  const heads = picked.slice(0, -1)
+    .map(e => e.text.split('：')[0] || e.text.slice(0, 14));
+  return heads.join('、') + `；${last.text.slice(0, 22)}`;
+}
+
+/* 去向配置 */
+const DESTINATION_OPTIONS = [
+  { type: 'new_node',  nodeType: 'event',       label: '新建事件节点',  desc: '作为独立历史记录加入图谱', icon: '◎' },
+  { type: 'new_node',  nodeType: 'achievement',  label: '新建成就节点',  desc: '标记为人生里程碑',          icon: '✦' },
+  { type: 'merge',     label: '合并入已有节点',  desc: '丰富已有记忆而不新增节点',                          icon: '⊕' },
+  { type: 'tag',       label: '附加为"我"标签', desc: '更新自我认知标签，不进入图谱',                       icon: '◈' },
+];
+
+function destKey(d) {
+  if (!d) return '';
+  if (d.type === 'new_node') return `new_node_${d.nodeType}`;
+  return d.type;
+}
+
+/* 根据 book.kind 推荐默认去向 option */
+function getDefaultDestOption(book) {
+  const d = book.destination;
+  if (!d) return DESTINATION_OPTIONS[0];
+  if (d.type === 'new_node' && d.nodeType === 'achievement') return DESTINATION_OPTIONS[1];
+  if (d.type === 'new_node') return DESTINATION_OPTIONS[0];
+  if (d.type === 'merge')    return DESTINATION_OPTIONS[2];
+  return DESTINATION_OPTIONS[3];
 }
 
 const DECAY_COLOR = {
@@ -44,182 +65,244 @@ const DECAY_COLOR = {
   fading:   'rgba(180,150,90,0.7)',
   critical: 'rgba(255,80,80,0.8)',
 };
-const DECAY_LABEL = { fresh: '鲜活', cooling: '冷却中', fading: '褪色', critical: '临界' };
 
 export default function MemoryRefinement({ book, onClose, onConfirm }) {
-  /* entries 带 checked 状态 */
-  const [entries, setEntries] = useState(
-    () => (book.entries || []).map(e => ({ ...e, checked: true }))
-  );
-  const [imprint, setImprint] = useState(() =>
-    synthesizeImprint(book.entries || [], book.title)
-  );
-  const [phase, setPhase] = useState('idle'); // idle | confirming | done
-  const imprintRef = useRef(null);
+  const allEntries  = book.entries || [];
+  const keyEntries  = allEntries.filter(e => e.important);   /* 关键条目 */
+  const restEntries = allEntries.filter(e => !e.important);  /* 过程记录（折叠） */
 
-  /* 重算印记 */
-  useEffect(() => {
-    setImprint(synthesizeImprint(entries, book.title));
-  }, [entries]);
+  /* step: 'pick' | 'shape' | 'forget' | 'done' */
+  const [step, setStep]         = useState('pick');
+  const [picked, setPicked]     = useState(
+    /* 默认全选关键条目；若无 important 条目则全选 */
+    () => new Set((keyEntries.length ? keyEntries : allEntries).map(e => e.id))
+  );
+  const [showRest, setShowRest] = useState(false);
+  const [imprint, setImprint]   = useState('');
+  const [destOpt, setDestOpt]   = useState(() => getDefaultDestOption(book));
+  const [sinking, setSinking]   = useState(false);
 
-  /* 阻止背后的 ocean 滚动 */
+  /* 阻止 ocean 滚动 */
   useEffect(() => {
     const ocean = document.getElementById('ocean');
     if (ocean) ocean.style.overflow = 'hidden';
-    const stopWheel = e => e.stopPropagation();
-    document.addEventListener('wheel', stopWheel, { capture: true });
+    const stop = e => e.stopPropagation();
+    document.addEventListener('wheel', stop, { capture: true });
     return () => {
       if (ocean) ocean.style.overflow = '';
-      document.removeEventListener('wheel', stopWheel, { capture: true });
+      document.removeEventListener('wheel', stop, { capture: true });
     };
   }, []);
 
+  /* 当勾选变化时如果已进入第二步，实时重算印记 */
+  useEffect(() => {
+    if (step === 'shape') {
+      const pickedList = allEntries.filter(e => picked.has(e.id));
+      setImprint(synthesizeImprint(pickedList, book.title));
+    }
+  }, [picked, step]);
+
   function toggle(id) {
-    setEntries(prev => prev.map(e => e.id === id ? { ...e, checked: !e.checked } : e));
+    setPicked(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   }
 
-  function handleConfirm() {
-    if (phase !== 'idle') return;
-    setPhase('confirming');
-    /* 步骤1：右列放大发光 */
-    setTimeout(() => {
-      onConfirm(imprint);   /* 通知父组件归档 */
-      setPhase('done');
-    }, 320);
-    /* 步骤3：面板下沉，结束后关闭 */
-    setTimeout(() => {
-      onClose();
-    }, 1300);
+  /* 第一步 → 下一步 */
+  function handlePickNext() {
+    if (picked.size === 0) {
+      setStep('forget');
+      return;
+    }
+    const pickedList = allEntries.filter(e => picked.has(e.id));
+    setImprint(synthesizeImprint(pickedList, book.title));
+    setStep('shape');
   }
 
-  const checked  = entries.filter(e => e.checked);
-  const skipped  = entries.filter(e => !e.checked);
+  /* 确认遗忘（第一步全不选后） */
+  function handleForgetConfirm() {
+    setSinking(true);
+    setTimeout(() => onConfirm('', null, true /* forgot */), 400);
+  }
+
+  /* 第二步确认提炼 */
+  function handleShapeConfirm() {
+    if (sinking) return;
+    setSinking(true);
+    setTimeout(() => {
+      onConfirm(imprint, destOpt);
+    }, 760);
+  }
+
+  /* ── 渲染辅助 ── */
+  function renderEntry(e, showToggle = true) {
+    const isOn = picked.has(e.id);
+    return (
+      <div
+        key={e.id}
+        className={`mr-entry ${isOn ? 'mr-entry--on' : 'mr-entry--off'} ${showToggle ? 'mr-entry--clickable' : ''}`}
+        onClick={showToggle ? () => toggle(e.id) : undefined}
+      >
+        {showToggle && (
+          <span className={`mr-check ${isOn ? 'mr-check--on' : ''}`}>
+            {isOn ? '✓' : '○'}
+          </span>
+        )}
+        <span className="mr-entry-body">
+          <span className="mr-entry-text">{e.text}</span>
+          <span className="mr-entry-meta">
+            {e.important && <span className="mr-star">★ 关键</span>}
+            <span style={{ color: DECAY_COLOR[e.decay] || 'rgba(255,255,255,0.3)' }}>
+              {e.time}
+            </span>
+          </span>
+        </span>
+      </div>
+    );
+  }
+
+  const pickedCount  = picked.size;
+  const skippedCount = allEntries.length - pickedCount;
+  const displayEntries = keyEntries.length ? keyEntries : allEntries;
 
   return (
     <div className="mr-overlay" onClick={onClose}>
       <div
-        className={`mr-panel ${phase === 'done' ? 'mr-panel--sinking' : ''}`}
+        className={`mr-panel ${sinking ? 'mr-panel--sinking' : ''}`}
         onClick={e => e.stopPropagation()}
       >
-        {/* ── 顶部标题 ── */}
+        {/* ── 顶部 ── */}
         <div className="mr-header">
-          <div className="mr-title">这段记忆值得永远记住吗？</div>
-          <div className="mr-subtitle">
-            <span className="mr-book-chip" style={{ background: book.color }}>
-              {book.title}
+          <div className="mr-step-bar">
+            <span className={`mr-step-dot ${step === 'pick' || step === 'forget' ? 'mr-step-dot--on' : 'mr-step-dot--done'}`}>
+              {step === 'pick' || step === 'forget' ? '1' : '✓'}
             </span>
-            <span className="mr-arrow-hint">→ 沉入档案馆</span>
+            <span className={`mr-step-line ${step === 'shape' ? 'mr-step-line--on' : ''}`} />
+            <span className={`mr-step-dot ${step === 'shape' ? 'mr-step-dot--on' : step === 'done' ? 'mr-step-dot--done' : 'mr-step-dot--off'}`}>2</span>
           </div>
-          <button className="mr-close" onClick={onClose}>✕</button>
+          <div className="mr-header-right">
+            <span className="mr-book-chip" style={{ background: book.color }}>{book.title}</span>
+            <button className="mr-close" onClick={onClose}>✕</button>
+          </div>
         </div>
 
-        {/* ── 三列主体 ── */}
-        <div className="mr-body">
+        {/* ══ 第一步：挑重点 ══ */}
+        {(step === 'pick') && (
+          <div className="mr-step-body">
+            <div className="mr-step-title">这本书里，有什么值得长期记住的？</div>
+            <div className="mr-step-hint">取消勾选 = 允许遗忘 · 全部取消 = 这段记忆就此消散</div>
 
-          {/* 左列：经历细节 */}
-          <div className="mr-col mr-col--left">
-            <div className="mr-col-title">经历细节</div>
-            <div className="mr-col-hint">取消勾选 = 允许遗忘</div>
             <div className="mr-entries">
-              {entries.map(e => (
-                <label
-                  key={e.id}
-                  className={`mr-entry ${e.checked ? 'mr-entry--on' : 'mr-entry--off'}`}
-                  onClick={() => toggle(e.id)}
-                >
-                  <span className={`mr-checkbox ${e.checked ? 'mr-checkbox--on' : ''}`}>
-                    {e.checked ? '✓' : '○'}
-                  </span>
-                  <span className="mr-entry-body">
-                    <span className="mr-entry-text">{e.text}</span>
-                    <span className="mr-entry-meta">
-                      <span style={{ color: DECAY_COLOR[e.decay] }}>
-                        {DECAY_LABEL[e.decay]}
-                      </span>
-                      {e.important && <span className="mr-star">★</span>}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
+              {/* 关键条目（默认展示） */}
+              {displayEntries.map(e => renderEntry(e))}
 
-          {/* 中列：提炼层 */}
-          <div className="mr-col mr-col--filter">
-            <div className="mr-filter-label">提炼</div>
-            <div className="mr-filter-membrane">
-              {/* 勾选条目的流向线 */}
-              {checked.map((e, i) => (
-                <div key={e.id} className="mr-flow-line mr-flow-line--pass"
-                  style={{ top: `${20 + i * 28}%` }}>
-                  <div className="mr-flow-arrow" />
-                </div>
-              ))}
-              {/* 跳过条目的消散线 */}
-              {skipped.map((e, i) => (
-                <div key={e.id} className="mr-flow-line mr-flow-line--fade"
-                  style={{ top: `${25 + (checked.length + i) * 24}%` }}>
-                  <div className="mr-flow-arrow mr-flow-arrow--fade" />
-                </div>
-              ))}
-              <div className="mr-filter-badge">
-                <span>{checked.length}</span>
-                <span className="mr-filter-badge-label">条保留</span>
+              {/* 过程记录（折叠） */}
+              {restEntries.length > 0 && (
+                <>
+                  <button className="mr-fold-btn" onClick={() => setShowRest(v => !v)}>
+                    {showRest ? '▲' : '▼'} 过程记录（{restEntries.length} 条）
+                  </button>
+                  {showRest && restEntries.map(e => renderEntry(e))}
+                </>
+              )}
+            </div>
+
+            {/* 底部统计 */}
+            <div className="mr-pick-footer">
+              <span className="mr-pick-stat">
+                {pickedCount > 0
+                  ? <><strong>{pickedCount}</strong> 条将被提炼{skippedCount > 0 && <>，<span className="mr-faded">{skippedCount} 条允许消散</span></>}</>
+                  : <span className="mr-warn">全部取消 → 这段记忆将完全遗忘</span>
+                }
+              </span>
+              <div className="mr-pick-actions">
+                <button className="mr-btn mr-btn--cancel" onClick={onClose}>先不了</button>
+                <button className="mr-btn mr-btn--next" onClick={handlePickNext}>
+                  {pickedCount === 0 ? '确认遗忘' : '下一步 →'}
+                </button>
               </div>
             </div>
-            {skipped.length > 0 && (
-              <div className="mr-filter-forget">
-                {skipped.length} 条将随时间消散，<br />这是正常的。
-              </div>
-            )}
           </div>
+        )}
 
-          {/* 右列：印记预览 */}
-          <div className="mr-col mr-col--right">
-            <div className="mr-col-title">留下的印记</div>
-            <div className="mr-col-hint">AI 帮你提炼，可以修改</div>
-            <div
-              className={`mr-imprint-wrap ${phase === 'confirming' ? 'mr-imprint-wrap--glow' : ''}`}
-              ref={imprintRef}
-            >
+        {/* ══ 确认遗忘分支 ══ */}
+        {step === 'forget' && (
+          <div className="mr-step-body mr-forget-body">
+            <div className="mr-forget-icon">～</div>
+            <div className="mr-step-title">这段记忆就此消散</div>
+            <div className="mr-step-hint">
+              你没有勾选任何内容。<br />
+              确认后，「{book.title}」将从书架消失，不产生任何档案馆记录。
+            </div>
+            <div className="mr-forget-actions">
+              <button className="mr-btn mr-btn--cancel" onClick={() => setStep('pick')}>← 返回，再想想</button>
+              <button className="mr-btn mr-btn--forget" onClick={handleForgetConfirm}>确认，就让它消散吧</button>
+            </div>
+          </div>
+        )}
+
+        {/* ══ 第二步：定形态 ══ */}
+        {step === 'shape' && (
+          <div className="mr-step-body mr-shape-body">
+            <div className="mr-step-title">记住成什么样子，放在哪？</div>
+            <div className="mr-step-hint">AI 帮你提炼了一句印记，可以直接修改</div>
+
+            {/* 印记编辑区 */}
+            <div className={`mr-imprint-wrap ${sinking ? 'mr-imprint-wrap--glow' : ''}`}>
               <textarea
                 className="mr-imprint-textarea"
                 value={imprint}
                 onChange={e => setImprint(e.target.value)}
-                rows={5}
+                rows={3}
                 maxLength={120}
+                placeholder="用一句话描述这段记忆……"
               />
-              <div className="mr-imprint-label">
-                这条印记将在档案馆永久存在
-              </div>
+              <div className="mr-imprint-label">这条印记将沉入档案馆 · 最多 120 字</div>
             </div>
 
-            {/* 与档案馆已有节点的关联提示（静态示意） */}
-            {book.tag && (
-              <div className="mr-node-hint">
-                <div className="mr-node-hint-dot"
-                  style={{ background: `var(--tag-${book.tag})` }} />
-                <span>将关联至档案馆 · <strong style={{ color: `var(--tag-${book.tag})` }}>
-                  {tagLabel(book.tag)}
-                </strong> 类节点</span>
-              </div>
-            )}
-          </div>
-        </div>
+            {/* 去向选择 */}
+            <div className="mr-dest-title">放在档案馆的哪里？</div>
+            <div className="mr-dest-options">
+              {DESTINATION_OPTIONS.map(opt => {
+                const isOn = destKey(opt) === destKey(destOpt);
+                const isRecommended = destKey(opt) === destKey(getDefaultDestOption(book));
+                return (
+                  <div
+                    key={destKey(opt)}
+                    className={`mr-dest-opt ${isOn ? 'mr-dest-opt--on' : ''}`}
+                    onClick={() => setDestOpt(opt)}
+                  >
+                    <span className="mr-dest-icon">{opt.icon}</span>
+                    <span className="mr-dest-body">
+                      <span className="mr-dest-label">
+                        {opt.label}
+                        {isRecommended && <span className="mr-dest-rec">AI 推荐</span>}
+                      </span>
+                      <span className="mr-dest-desc">
+                        {opt.type === 'merge' && book.destination?.target
+                          ? `→ 合并入「${book.destination.target}」节点`
+                          : opt.desc}
+                      </span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
 
-        {/* ── 底部操作 ── */}
-        <div className="mr-footer">
-          <button className="mr-btn mr-btn--cancel" onClick={onClose}>
-            先不了
-          </button>
-          <button
-            className={`mr-btn mr-btn--confirm ${phase !== 'idle' ? 'mr-btn--confirming' : ''}`}
-            onClick={handleConfirm}
-            disabled={phase !== 'idle' || checked.length === 0}
-          >
-            {phase === 'idle' ? '沉入档案馆 ↓' : '正在沉入…'}
-          </button>
-        </div>
+            <div className="mr-shape-footer">
+              <button className="mr-btn mr-btn--cancel" onClick={() => setStep('pick')}>← 返回</button>
+              <button
+                className="mr-btn mr-btn--confirm"
+                onClick={handleShapeConfirm}
+                disabled={!imprint.trim() || sinking}
+              >
+                {sinking ? '沉入中…' : '沉入档案馆 ↓'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <style>{STYLES}</style>
@@ -227,230 +310,228 @@ export default function MemoryRefinement({ book, onClose, onConfirm }) {
   );
 }
 
-function tagLabel(tag) {
-  return { work: '工作', know: '知识', life: '生活', rel: '关系', id: '个人', emo: '情感' }[tag] || tag;
-}
-
 /* ─────────────────────────────────────────
-   内联样式 — 遵循 variables.css 的 token 体系
-   颜色全部使用 CSS 变量，不硬编码
+   内联样式
 ───────────────────────────────────────── */
 const STYLES = `
-/* ── 遮罩 ── */
 .mr-overlay {
   position: fixed; inset: 0; z-index: 900;
-  background: rgba(2,2,10,0.82);
+  background: rgba(2,2,10,0.85);
   display: flex; align-items: center; justify-content: center;
   padding: 24px;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(5px);
 }
 
-/* ── 面板主体 ── */
 .mr-panel {
   background: linear-gradient(160deg, var(--deep) 0%, var(--midnight) 100%);
-  border: 1px solid rgba(110,70,255,0.25);
+  border: 1px solid rgba(110,70,255,0.22);
   border-radius: 16px;
-  width: min(900px, 96vw);
-  max-height: 90vh;
+  width: min(560px, 96vw);
+  max-height: 88vh;
   overflow: hidden;
   display: flex; flex-direction: column;
-  box-shadow: 0 0 60px rgba(110,70,255,0.12), 0 32px 64px rgba(0,0,0,0.6);
-  transition: transform 0.4s cubic-bezier(.4,0,.2,1), opacity 0.4s ease;
+  box-shadow: 0 0 60px rgba(110,70,255,0.1), 0 32px 64px rgba(0,0,0,0.65);
+  transition: transform 0.45s cubic-bezier(.4,0,.2,1), opacity 0.45s ease;
 }
-.mr-panel--sinking {
-  transform: translateY(40px);
-  opacity: 0;
-}
+.mr-panel--sinking { transform: translateY(48px); opacity: 0; }
 
-/* ── 顶部标题栏 ── */
+/* ── 顶部 ── */
 .mr-header {
-  padding: 20px 24px 16px;
+  padding: 16px 20px 14px;
   border-bottom: 1px solid rgba(255,255,255,0.06);
-  position: relative;
+  display: flex; align-items: center; justify-content: space-between;
 }
-.mr-title {
-  font-family: var(--font-d);
-  font-size: 17px;
-  color: rgba(255,255,255,0.92);
-  letter-spacing: 0.02em;
-  margin-bottom: 6px;
+.mr-step-bar {
+  display: flex; align-items: center; gap: 6px;
 }
-.mr-subtitle {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 13px; color: rgba(255,255,255,0.4);
+.mr-step-dot {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-family: var(--font-m);
+  transition: all .3s ease;
+}
+.mr-step-dot--on   { background: rgba(110,70,255,0.3); border: 1px solid rgba(110,70,255,0.6); color: rgba(180,140,255,0.95); }
+.mr-step-dot--done { background: rgba(80,220,180,0.2); border: 1px solid rgba(80,220,180,0.5); color: rgba(80,220,180,0.9); }
+.mr-step-dot--off  { background: transparent; border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.25); }
+.mr-step-line {
+  width: 28px; height: 1px;
+  background: rgba(255,255,255,0.1);
+  transition: background .3s ease;
+}
+.mr-step-line--on { background: rgba(110,70,255,0.5); }
+.mr-header-right {
+  display: flex; align-items: center; gap: 10px;
 }
 .mr-book-chip {
-  padding: 2px 8px; border-radius: 4px;
-  font-size: 12px; color: rgba(255,255,255,0.7);
+  padding: 2px 9px; border-radius: 4px;
+  font-size: 11px; color: rgba(255,255,255,0.65);
+  font-family: var(--font-b);
 }
-.mr-arrow-hint { color: rgba(110,70,255,0.7); }
 .mr-close {
-  position: absolute; top: 18px; right: 20px;
   background: none; border: none; cursor: pointer;
-  color: rgba(255,255,255,0.3); font-size: 16px;
+  color: rgba(255,255,255,0.25); font-size: 15px;
   transition: color .2s;
 }
-.mr-close:hover { color: rgba(255,255,255,0.7); }
+.mr-close:hover { color: rgba(255,255,255,0.6); }
 
-/* ── 三列主体 ── */
-.mr-body {
-  display: grid;
-  grid-template-columns: 1fr 72px 1fr;
-  gap: 0;
-  flex: 1; overflow: hidden;
-  min-height: 0;
+/* ── 步骤主体通用 ── */
+.mr-step-body {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  padding: 22px 22px 0;
+  display: flex; flex-direction: column; gap: 14px;
 }
+.mr-step-body::-webkit-scrollbar { width: 3px; }
+.mr-step-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
 
-/* ── 通用列样式 ── */
-.mr-col {
-  padding: 20px;
-  display: flex; flex-direction: column; gap: 10px;
-  overflow: hidden;
+.mr-step-title {
+  font-family: var(--font-d);
+  font-size: 16px; color: rgba(255,255,255,0.9);
+  letter-spacing: 0.01em; line-height: 1.4;
 }
-.mr-col--left  { border-right: 1px solid rgba(255,255,255,0.05); overflow-y: auto; }
-.mr-col--right { border-left:  1px solid rgba(255,255,255,0.05); }
-.mr-col-title {
-  font-family: var(--font-m);
-  font-size: 11px; letter-spacing: 0.12em;
-  color: rgba(255,255,255,0.5); text-transform: uppercase;
-}
-.mr-col-hint {
-  font-size: 11px; color: rgba(255,255,255,0.25);
-  margin-top: -6px; margin-bottom: 4px;
+.mr-step-hint {
+  font-size: 12px; color: rgba(255,255,255,0.3);
+  line-height: 1.6; margin-top: -6px;
 }
 
-/* ── 左列：经历条目 ── */
-.mr-entries { display: flex; flex-direction: column; gap: 8px; }
+/* ── 条目列表 ── */
+.mr-entries { display: flex; flex-direction: column; gap: 7px; }
 .mr-entry {
   display: flex; gap: 10px; align-items: flex-start;
-  padding: 10px 12px; border-radius: 8px;
+  padding: 10px 12px; border-radius: 9px;
   border: 1px solid rgba(255,255,255,0.06);
-  cursor: pointer;
-  transition: all .22s ease;
+  transition: all .2s ease;
 }
-.mr-entry--on {
-  background: rgba(255,255,255,0.04);
-  border-color: rgba(110,70,255,0.2);
-}
-.mr-entry--off {
-  background: transparent;
-  opacity: 0.35;
-  text-decoration: line-through;
-  border-color: transparent;
-}
-.mr-checkbox {
+.mr-entry--clickable { cursor: pointer; }
+.mr-entry--on  { background: rgba(255,255,255,0.04); border-color: rgba(110,70,255,0.18); }
+.mr-entry--off { opacity: 0.3; }
+.mr-entry--clickable.mr-entry--on:hover  { background: rgba(110,70,255,0.08); border-color: rgba(110,70,255,0.3); }
+.mr-entry--clickable.mr-entry--off:hover { opacity: 0.5; }
+.mr-check {
   font-size: 13px; flex-shrink: 0; margin-top: 1px;
-  color: rgba(255,255,255,0.3);
-  transition: color .2s;
+  color: rgba(255,255,255,0.25); transition: color .2s;
 }
-.mr-checkbox--on { color: var(--glow-fresh); }
+.mr-check--on { color: var(--glow-fresh, rgba(80,220,180,0.9)); }
 .mr-entry-body { display: flex; flex-direction: column; gap: 4px; flex: 1; }
-.mr-entry-text { font-size: 13px; color: rgba(255,255,255,0.78); line-height: 1.4; }
+.mr-entry-text { font-size: 13px; color: rgba(255,255,255,0.8); line-height: 1.45; }
 .mr-entry-meta {
   display: flex; gap: 8px; align-items: center;
-  font-size: 11px; color: rgba(255,255,255,0.3);
+  font-size: 11px; color: rgba(255,255,255,0.28);
 }
-.mr-star { color: var(--tag-emo); font-size: 11px; }
+.mr-star { color: rgba(255,217,61,0.8); font-size: 10px; }
 
-/* ── 中列：提炼膜 ── */
-.mr-col--filter {
-  background: rgba(110,70,255,0.04);
-  border-left:  1px solid rgba(110,70,255,0.12);
-  border-right: 1px solid rgba(110,70,255,0.12);
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: flex-start; padding: 20px 8px; gap: 12px;
-  position: relative;
+.mr-fold-btn {
+  background: none; border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 6px; padding: 5px 12px;
+  color: rgba(255,255,255,0.28); font-size: 11px;
+  cursor: pointer; text-align: left;
+  transition: all .2s;
 }
-.mr-filter-label {
-  font-family: var(--font-m);
-  font-size: 10px; letter-spacing: 0.15em;
-  color: rgba(110,70,255,0.6); text-transform: uppercase;
-}
-.mr-filter-membrane {
-  flex: 1; width: 100%; position: relative;
-  min-height: 120px;
-}
-.mr-filter-badge {
-  position: absolute; bottom: 0; left: 50%;
-  transform: translateX(-50%);
-  background: rgba(110,70,255,0.15);
-  border: 1px solid rgba(110,70,255,0.3);
-  border-radius: 20px; padding: 4px 10px;
-  font-size: 13px; color: rgba(110,70,255,0.9);
-  display: flex; flex-direction: column; align-items: center; gap: 0;
-  white-space: nowrap;
-}
-.mr-filter-badge-label { font-size: 10px; color: rgba(110,70,255,0.5); }
-.mr-filter-forget {
-  font-size: 10px; color: rgba(255,255,255,0.2);
-  text-align: center; line-height: 1.5;
-}
+.mr-fold-btn:hover { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.5); }
 
-/* 流向线 */
-.mr-flow-line {
-  position: absolute; left: 0; right: 0;
-  height: 1px; display: flex; align-items: center;
+/* ── 第一步底部 ── */
+.mr-pick-footer {
+  position: sticky; bottom: 0;
+  background: linear-gradient(to top, var(--midnight) 70%, transparent);
+  padding: 18px 0 22px;
+  display: flex; flex-direction: column; gap: 12px;
 }
-.mr-flow-line--pass { background: linear-gradient(90deg, rgba(80,220,180,0.4), rgba(110,70,255,0.5)); }
-.mr-flow-line--fade { background: linear-gradient(90deg, rgba(255,255,255,0.1), transparent); }
-.mr-flow-arrow {
-  margin-left: auto;
-  width: 0; height: 0;
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-  border-left: 6px solid rgba(110,70,255,0.6);
+.mr-pick-stat {
+  font-size: 12px; color: rgba(255,255,255,0.35);
 }
-.mr-flow-arrow--fade { border-left-color: rgba(255,255,255,0.12); }
+.mr-pick-stat strong { color: rgba(80,220,180,0.85); }
+.mr-faded { color: rgba(255,255,255,0.22); }
+.mr-warn  { color: rgba(255,140,80,0.7); }
+.mr-pick-actions { display: flex; justify-content: flex-end; gap: 10px; }
 
-/* ── 右列：印记 ── */
+/* ── 确认遗忘分支 ── */
+.mr-forget-body {
+  align-items: center; justify-content: center;
+  text-align: center; padding: 40px 32px 32px;
+  gap: 16px;
+}
+.mr-forget-icon {
+  font-size: 40px; color: rgba(255,255,255,0.12);
+  font-family: var(--font-d);
+}
+.mr-forget-actions { display: flex; gap: 12px; margin-top: 8px; }
+
+/* ── 第二步 ── */
+.mr-shape-body { padding-bottom: 0; }
 .mr-imprint-wrap {
-  flex: 1; display: flex; flex-direction: column; gap: 8px;
-  border-radius: 10px; padding: 14px;
+  border-radius: 10px; padding: 14px 16px;
   background: rgba(110,70,255,0.08);
   border: 1px solid rgba(110,70,255,0.2);
+  display: flex; flex-direction: column; gap: 8px;
   transition: box-shadow .3s ease, border-color .3s ease;
 }
 .mr-imprint-wrap--glow {
-  box-shadow: 0 0 24px rgba(110,70,255,0.45), 0 0 60px rgba(110,70,255,0.15);
-  border-color: rgba(110,70,255,0.6);
-  animation: mr-imprint-pulse 0.32s ease-out;
+  box-shadow: 0 0 28px rgba(110,70,255,0.4);
+  border-color: rgba(110,70,255,0.55);
+  animation: mr-pulse .32s ease-out;
 }
-@keyframes mr-imprint-pulse {
+@keyframes mr-pulse {
   0%   { transform: scale(1); }
-  50%  { transform: scale(1.025); }
+  50%  { transform: scale(1.015); }
   100% { transform: scale(1); }
 }
 .mr-imprint-textarea {
-  flex: 1; background: transparent; border: none;
-  color: rgba(255,255,255,0.85); font-size: 14px;
+  background: transparent; border: none; outline: none;
+  color: rgba(255,255,255,0.88); font-size: 14px;
   font-family: var(--font-b); line-height: 1.6;
-  resize: none; outline: none;
-  caret-color: var(--glow-a);
+  resize: none; caret-color: rgba(110,70,255,0.9);
+  width: 100%;
 }
 .mr-imprint-label {
-  font-size: 11px; color: rgba(110,70,255,0.5);
+  font-size: 10px; color: rgba(110,70,255,0.4);
   font-family: var(--font-m); letter-spacing: 0.08em;
 }
-.mr-node-hint {
-  display: flex; align-items: center; gap: 7px;
-  font-size: 12px; color: rgba(255,255,255,0.35);
-  padding: 8px 10px; border-radius: 6px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.05);
+
+/* 去向选择 */
+.mr-dest-title {
+  font-size: 11px; color: rgba(255,255,255,0.35);
+  font-family: var(--font-m); letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
-.mr-node-hint-dot {
-  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
-  box-shadow: 0 0 6px currentColor;
+.mr-dest-options { display: flex; flex-direction: column; gap: 7px; }
+.mr-dest-opt {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 10px 13px; border-radius: 9px;
+  border: 1px solid rgba(255,255,255,0.06);
+  cursor: pointer; transition: all .2s ease;
+}
+.mr-dest-opt:hover { background: rgba(255,255,255,0.03); border-color: rgba(110,70,255,0.2); }
+.mr-dest-opt--on {
+  background: rgba(110,70,255,0.1); border-color: rgba(110,70,255,0.35);
+}
+.mr-dest-icon {
+  font-size: 16px; color: rgba(110,70,255,0.6);
+  flex-shrink: 0; margin-top: 1px;
+  width: 20px; text-align: center;
+}
+.mr-dest-opt--on .mr-dest-icon { color: rgba(180,140,255,0.9); }
+.mr-dest-body { display: flex; flex-direction: column; gap: 2px; }
+.mr-dest-label {
+  font-size: 13px; color: rgba(255,255,255,0.65);
+  display: flex; align-items: center; gap: 7px;
+}
+.mr-dest-opt--on .mr-dest-label { color: rgba(255,255,255,0.9); }
+.mr-dest-rec {
+  font-size: 9px; padding: 1px 6px; border-radius: 3px;
+  background: rgba(80,220,180,0.12); color: rgba(80,220,180,0.7);
+  font-family: var(--font-m); letter-spacing: 0.05em;
+}
+.mr-dest-desc { font-size: 11px; color: rgba(255,255,255,0.25); line-height: 1.4; }
+
+.mr-shape-footer {
+  position: sticky; bottom: 0;
+  background: linear-gradient(to top, var(--midnight) 65%, transparent);
+  padding: 18px 0 22px;
+  display: flex; justify-content: flex-end; gap: 10px;
 }
 
-/* ── 底部按钮 ── */
-.mr-footer {
-  padding: 16px 24px;
-  border-top: 1px solid rgba(255,255,255,0.05);
-  display: flex; justify-content: flex-end; gap: 12px;
-}
+/* ── 通用按钮 ── */
 .mr-btn {
-  padding: 9px 20px; border-radius: 8px; font-size: 13px;
+  padding: 8px 18px; border-radius: 8px; font-size: 13px;
   cursor: pointer; font-family: var(--font-b);
   transition: all .2s ease; border: 1px solid;
   letter-spacing: 0.02em;
@@ -458,35 +539,26 @@ const STYLES = `
 .mr-btn--cancel {
   background: transparent;
   border-color: rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.35);
+  color: rgba(255,255,255,0.3);
 }
-.mr-btn--cancel:hover {
-  border-color: rgba(255,255,255,0.25);
-  color: rgba(255,255,255,0.6);
+.mr-btn--cancel:hover { border-color: rgba(255,255,255,0.22); color: rgba(255,255,255,0.55); }
+.mr-btn--next {
+  background: rgba(110,70,255,0.15);
+  border-color: rgba(110,70,255,0.4);
+  color: rgba(180,140,255,0.9);
 }
+.mr-btn--next:hover { background: rgba(110,70,255,0.26); box-shadow: 0 0 16px rgba(110,70,255,0.25); }
 .mr-btn--confirm {
   background: rgba(110,70,255,0.18);
   border-color: rgba(110,70,255,0.45);
   color: rgba(180,140,255,0.95);
 }
-.mr-btn--confirm:hover:not(:disabled) {
-  background: rgba(110,70,255,0.3);
-  box-shadow: 0 0 18px rgba(110,70,255,0.3);
+.mr-btn--confirm:hover:not(:disabled) { background: rgba(110,70,255,0.3); box-shadow: 0 0 18px rgba(110,70,255,0.3); }
+.mr-btn--confirm:disabled { opacity: 0.35; cursor: not-allowed; }
+.mr-btn--forget {
+  background: rgba(255,100,80,0.1);
+  border-color: rgba(255,100,80,0.25);
+  color: rgba(255,160,140,0.8);
 }
-.mr-btn--confirm:disabled {
-  opacity: 0.35; cursor: not-allowed;
-}
-.mr-btn--confirming {
-  animation: mr-confirm-shimmer 0.6s ease-out;
-}
-@keyframes mr-confirm-shimmer {
-  0%   { box-shadow: 0 0 0 rgba(110,70,255,0); }
-  50%  { box-shadow: 0 0 32px rgba(110,70,255,0.6); }
-  100% { box-shadow: 0 0 8px rgba(110,70,255,0.2); }
-}
-
-/* ── 滚动条 ── */
-.mr-col--left::-webkit-scrollbar { width: 4px; }
-.mr-col--left::-webkit-scrollbar-track { background: transparent; }
-.mr-col--left::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+.mr-btn--forget:hover { background: rgba(255,100,80,0.2); }
 `;
