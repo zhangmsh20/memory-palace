@@ -54,6 +54,7 @@ export const NODES = [
     content: '正在学习Neo4j、向量数据库、temporal knowledge graph。理解节点+关系的图数据库结构，研究如何将其应用于AI记忆系统底层。',
     relatedBooks: ['知识图谱学习'],
     relatedStickies: ['知识'],
+    mergeTarget: true,
   },
   {
     id:  8, label: '王明',       type: 'rel',  desc: '朋友，设计爱好者，下周来访',
@@ -62,6 +63,7 @@ export const NODES = [
     content: '朋友，对交互设计非常感兴趣。下周五来上海，需要安排川菜馆。上次见面3个月前，聊了很久AI产品趋势。',
     relatedBooks: ['王明相关'],
     relatedStickies: ['关系'],
+    mergeTarget: true,
   },
   {
     id:  9, label: '早起习惯',   type: 'emo',  desc: '偏好7-9点工作与运动',
@@ -103,6 +105,21 @@ export const NODES = [
     relatedBooks: ['常用食谱', '王明相关'],
     relatedStickies: ['生活'],
   },
+  /* ── v0.5 新增：books.js destination.target 引用的两个缺失节点 ── */
+  {
+    id: 14, label: '产品方法论', type: 'know', desc: '积累的产品设计判断框架',
+    x: .66, y: .42, size: 12,
+    archiveDate: '2026.04', archiveTimestamp: 0.80,
+    content: '产品设计核心判断：每个"不展示"都是刻意决策；透明度分三层——可见→可理解→可控制；JTBD思维优先于功能列表。',
+    mergeTarget: true,
+  },
+  {
+    id: 15, label: '设计灵感库', type: 'know', desc: 'UI/UX视觉与交互灵感收集',
+    x: .38, y: .44, size: 11,
+    archiveDate: '2026.03', archiveTimestamp: 0.70,
+    content: '深海色调、生物发光感、景深层级、材质感动效。参考：深色系渐变#02020a→#0d1035，bio蓝+abyssal紫双色发光系统。',
+    mergeTarget: true,
+  },
 ];
 
 export const EDGES = [
@@ -110,6 +127,8 @@ export const EDGES = [
   [1,2],[1,3],[1,11],
   [2,3],[3,7],[3,10],[7,10],
   [4,12],[4,9],[8,13],[5,13],[0,5],[0,2],
+  /* v0.5 新增节点的边 */
+  [0,14],[1,14],[11,15],[14,11],
 ];
 
 export const TAG_HEX = {

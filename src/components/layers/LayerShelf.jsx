@@ -130,7 +130,7 @@ function initBookDecay(el, i) {
 /* ══════════════════════════════════════════════════════════
    主组件
    ══════════════════════════════════════════════════════════ */
-export default function LayerShelf({ isDemoMode }) {
+export default function LayerShelf({ isDemoMode, onRefinementConfirm }) {
   const inited      = useRef(false);
   const [openBook,       setOpenBook]       = useState(null);  // BookPage 用
   const [refinementBook, setRefinementBook] = useState(null);  // MemoryRefinement 用
@@ -220,6 +220,8 @@ export default function LayerShelf({ isDemoMode }) {
     } else {
       const destLabel = destOpt?.label || '档案馆';
       showToast(`✦ 印记已沉入${destLabel}：${imprint.slice(0, 18)}…`);
+      /* ── v0.5 · 向上通知 App，触发档案馆视觉反馈 ── */
+      onRefinementConfirm?.(imprint, destOpt);
     }
   }
 
@@ -416,8 +418,8 @@ export default function LayerShelf({ isDemoMode }) {
         <MemoryRefinement
           book={refinementBook}
           onClose={() => setRefinementBook(null)}
-          onConfirm={(imprint) => {
-            handleRefinementConfirm(imprint);
+          onConfirm={(imprint, destOpt, forgot) => {
+            handleRefinementConfirm(imprint, destOpt, forgot);
             setRefinementBook(null);
           }}
         />

@@ -11,6 +11,7 @@ import './styles/LayerSticky.css'
 import './styles/LayerShelf.css'
 import './styles/LayerLibrary.css'
 import './styles/SummonOverlay.css'
+import './styles/imprint.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

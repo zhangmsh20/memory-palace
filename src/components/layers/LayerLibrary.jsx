@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { NODES, EDGES, TAG_HEX, TAG_NAMES } from '../../data/graphNodes';
 import { BOOKS } from '../../data/books';
 import { STICKY_DATA } from '../../data/stickyNotes';
@@ -11,36 +11,32 @@ function hexRGB(hex) {
 }
 
 let activeFilter = null;
-let tlValue      = 1;   // 0 = 6个月前, 1 = 今天
+let tlValue      = 1;
 let searchStr    = '';
 
-function getConnectedLabels(nodeId) {
-  return EDGES
+function getConnectedLabels(nodeId, nodes, edges) {
+  return edges
     .filter(([a, b]) => a === nodeId || b === nodeId)
-    .map(([a, b]) => NODES[a === nodeId ? b : a]?.label)
+    .map(([a, b]) => nodes[a === nodeId ? b : a]?.label)
     .filter(Boolean)
     .join('、');
 }
 
-// ── 档案卡片（打通书架 + 便利贴的关联记忆）──
-function ArchiveCard({ node, onClose, onNavigate }) {
+/* ── 档案卡片 ── */
+function ArchiveCard({ node, onClose, onNavigate, sourceLabel }) {
   const col     = TAG_HEX[node.type] || '#fff';
   const tagName = TAG_NAMES[node.type] || node.type;
   const connectedCount = EDGES.filter(([a, b]) => a === node.id || b === node.id).length;
-  const connectedLabels = getConnectedLabels(node.id);
+  const connectedLabels = getConnectedLabels(node.id, NODES, EDGES);
   const archiveNum = String(node.id + 1).padStart(3, '0');
 
-  // 关联书架书目
   const relatedBooks = BOOKS.filter(b =>
-    (node.relatedBooks || []).includes(b.title) ||
-    (node.type === b.tag)
+    (node.relatedBooks || []).includes(b.title) || (node.type === b.tag)
   ).slice(0, 3);
 
-  // 关联便利贴（按 tag 交叉）
   const TAG_ZH_MAP = { id: '偏好', work: '工作', know: '知识', life: '生活', rel: '关系', emo: '情感' };
-  const relatedStickies = STICKY_DATA.filter(s =>
-    (node.relatedStickies || []).includes(s.tag) ||
-    s.tag === TAG_ZH_MAP[node.type]
+  const relatedStickies = (STICKY_DATA || []).filter(s =>
+    (node.relatedStickies || []).includes(s.tag) || s.tag === TAG_ZH_MAP[node.type]
   ).slice(0, 3);
 
   return (
@@ -69,7 +65,10 @@ function ArchiveCard({ node, onClose, onNavigate }) {
             </div>
             <div className="ac-meta-item">
               <span className="ac-meta-label">来源</span>
-              <span className="ac-meta-val">书架层沉淀</span>
+              {/* ── v0.5：显示归档来源（✦ 用户提炼 / 🌙 深夜整理 / 书架层沉淀） ── */}
+              <span className="ac-meta-val" style={{ color: col }}>
+                {sourceLabel || node.sourceLabel || '书架层沉淀'}
+              </span>
             </div>
             <div className="ac-meta-item">
               <span className="ac-meta-label">连接数</span>
@@ -94,7 +93,16 @@ function ArchiveCard({ node, onClose, onNavigate }) {
             <p className="ac-content-text">{node.content || node.desc}</p>
           </div>
 
-          {/* ✦ 跨层打通：关联书架记忆 */}
+          {/* ── v0.5：新印记展示 ── */}
+          {node.imprint && (
+            <div className="ac-content-block" style={{ marginTop: 8 }}>
+              <span className="ac-meta-label" style={{ color: col }}>✦ 印记</span>
+              <p className="ac-content-text" style={{ color: col, fontStyle: 'italic' }}>
+                {node.imprint}
+              </p>
+            </div>
+          )}
+
           {relatedBooks.length > 0 && (
             <div className="ac-cross-layer">
               <span className="ac-meta-label">📚 书架层关联</span>
@@ -111,7 +119,6 @@ function ArchiveCard({ node, onClose, onNavigate }) {
             </div>
           )}
 
-          {/* ✦ 跨层打通：关联便利贴 */}
           {relatedStickies.length > 0 && (
             <div className="ac-cross-layer">
               <span className="ac-meta-label">🗒 便利贴层关联</span>
@@ -140,18 +147,116 @@ function ArchiveCard({ node, onClose, onNavigate }) {
   );
 }
 
-export default function LayerLibrary({ onNavigate }) {
+/* ── v0.5 · 「我」节点标签云浮层 ── */
+function MyTagCloud({ tags, onClose }) {
+  if (!tags || tags.length === 0) return null;
+  return (
+    <div className="my-tag-cloud-overlay" onClick={onClose}>
+      <div className="my-tag-cloud" onClick={e => e.stopPropagation()}>
+        <div className="mtc-header">
+          <span style={{ color: '#9b6bff' }}>◈</span> 「我」的印记标签
+          <button className="ac-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="mtc-tags">
+          {tags.map((t, i) => (
+            <span key={i} className="mtc-tag" style={{ animationDelay: `${i * 60}ms` }}>{t}</span>
+          ))}
+        </div>
+        <div className="mtc-hint">这些印记已附加到「我」节点，不单独占据图谱空间</div>
+      </div>
+    </div>
+  );
+}
+
+export default function LayerLibrary({ onNavigate, pendingImprint, onImprintApplied }) {
   const inited    = useRef(false);
   const animT     = useRef(0);
-  const gNodes    = useRef([]);
+  const gNodes    = useRef([]);   // 运行时节点，含动态新增节点
+  const edgesRef  = useRef([...EDGES]);
   const ctxRef    = useRef(null);
   const dimRef    = useRef({ w: 0, h: 0 });
   const [activeNode, setActiveNode] = useState(null);
+  const [activeNodeSource, setActiveNodeSource] = useState(null);
   const gNodesRef = useRef([]);
 
-  // ✦ 节点点亮动画状态：记录每个节点上次可见性，用于触发点亮
   const prevAlphaRef = useRef({});
-  const lightUpRef   = useRef({}); // nodeId -> { start, duration }
+  const lightUpRef   = useRef({});   // nodeId -> { start, duration }
+  const pulseRef     = useRef({});   // nodeId -> { start, duration } 用于 merge/tag 脉动
+
+  // ── v0.5 · 「我」节点标签云 ──
+  const [myTags, setMyTags]           = useState([]);
+  const [showMyTagCloud, setShowMyTagCloud] = useState(false);
+
+  // ── v0.5 · pendingImprint 响应 ──
+  useEffect(() => {
+    if (!pendingImprint) return;
+    const { imprint, destOpt } = pendingImprint;
+    if (!destOpt) return;
+
+    const nodes = gNodesRef.current;
+    const edges = edgesRef.current;
+
+    if (destOpt.type === 'new_node') {
+      /* ── 新建节点：临时插入图谱，触发 lightUp 动画 ── */
+      const nodeType = destOpt.nodeType === 'achievement' ? 'id' : 'work';
+      const col      = TAG_HEX[nodeType];
+      const newId    = nodes.length;  // 不会与 NODES 静态 id 冲突
+      const newNode  = {
+        id:    newId,
+        label: imprint.slice(0, 10) + (imprint.length > 10 ? '…' : ''),
+        type:  nodeType,
+        desc:  destOpt.nodeType === 'achievement' ? '✦ 新建成就节点' : '◎ 新建事件节点',
+        x: 0.45 + (Math.random() - 0.5) * 0.3,
+        y: 0.45 + (Math.random() - 0.5) * 0.3,
+        size:  11,
+        archiveDate:      new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit' }).replace('/', '.'),
+        archiveTimestamp: 1.0,   // 「刚归档」，时间轴最右边
+        content: imprint,
+        imprint,
+        sourceLabel: '✦ 用户提炼归档',
+        phase: Math.random() * Math.PI * 2,
+        px: 0, py: 0,
+        _isNew: true,
+      };
+      const { w, h } = dimRef.current;
+      newNode.px = newNode.x * w;
+      newNode.py = newNode.y * h;
+
+      gNodes.current  = [...nodes, newNode];
+      gNodesRef.current = gNodes.current;
+
+      // 连接到「我」节点（id=0）
+      edgesRef.current = [...edges, [0, newId]];
+
+      // 触发高亮
+      lightUpRef.current[newId] = { start: Date.now(), duration: 1200 };
+
+    } else if (destOpt.type === 'merge') {
+      /* ── 合并入已有节点：找节点 → 追加内容 → 触发脉动 ── */
+      const target = nodes.find(n => n.label === destOpt.target);
+      if (target) {
+        target.content  = (target.content || '') + '\n\n[✦ 提炼归档] ' + imprint;
+        target.imprint  = imprint;
+        target.sourceLabel = '✦ 用户提炼归档';
+        target.size     = Math.min(target.size + 1.5, 28);  // 节点略微变大
+        pulseRef.current[target.id] = { start: Date.now(), duration: 900 };
+      }
+
+    } else if (destOpt.type === 'tag') {
+      /* ── 附加为「我」节点标签：更新标签云，触发「我」节点脉动 ── */
+      setMyTags(prev => [...prev, imprint.slice(0, 20)]);
+      const meNode = nodes.find(n => n.id === 0);
+      if (meNode) {
+        pulseRef.current[0] = { start: Date.now(), duration: 900 };
+        meNode.imprint     = imprint;
+        meNode.sourceLabel = '✦ 用户提炼归档';
+      }
+      setShowMyTagCloud(true);
+    }
+
+    onImprintApplied?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingImprint]);
 
   useEffect(() => {
     if (inited.current) return;
@@ -235,7 +340,7 @@ export default function LayerLibrary({ onNavigate }) {
         nt.textContent = TAG_NAMES[hit.type] || hit.type;
         nt.style.color = TAG_HEX[hit.type];
         document.getElementById('nt-desc').textContent  = hit.desc || '';
-        document.getElementById('nt-conns').textContent = `连接数 · ${EDGES.filter(([a, b]) => a === hit.id || b === hit.id).length}`;
+        document.getElementById('nt-conns').textContent = `连接数 · ${edgesRef.current.filter(([a, b]) => a === hit.id || b === hit.id).length}`;
         canvas.style.cursor = 'pointer';
       } else {
         tt.style.opacity = '0';
@@ -249,6 +354,7 @@ export default function LayerLibrary({ onNavigate }) {
       for (const n of gNodesRef.current) {
         if (Math.hypot(n.px - mx, n.py - my) < n.size + 8) {
           setActiveNode(n);
+          setActiveNodeSource(n.sourceLabel || null);
           const tt = document.getElementById('node-tooltip');
           if (tt) tt.style.opacity = '0';
           return;
@@ -256,39 +362,26 @@ export default function LayerLibrary({ onNavigate }) {
       }
     });
 
-    // ✦ 时间轴真实拖动——完整重写，支持 pointer capture
+    // ── 时间轴 ──
     const track = document.getElementById('lt-track');
     if (track) {
       let tlDragging = false;
-
       const updateTL = (clientX) => {
         const r   = track.getBoundingClientRect();
         const pct = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
-        const prevTL = tlValue;
         tlValue = pct;
-
         const fillEl   = document.getElementById('lt-fill');
         const handleEl = document.getElementById('lt-handle');
         if (fillEl)   fillEl.style.width  = (pct * 100) + '%';
         if (handleEl) handleEl.style.left = `calc(${pct * 100}% - 8px)`;
-
-        // ✦ 更新时间轴日期标签
         const dateLabel = document.getElementById('lt-current-date');
         if (dateLabel) {
           const months = Math.round((1 - pct) * 6);
           dateLabel.textContent = months === 0 ? '今天' : `${months}个月前`;
         }
       };
-
-      track.addEventListener('pointerdown', e => {
-        tlDragging = true;
-        track.setPointerCapture(e.pointerId);
-        updateTL(e.clientX);
-      });
-      track.addEventListener('pointermove', e => {
-        if (!tlDragging) return;
-        updateTL(e.clientX);
-      });
+      track.addEventListener('pointerdown', e => { tlDragging = true; track.setPointerCapture(e.pointerId); updateTL(e.clientX); });
+      track.addEventListener('pointermove', e => { if (!tlDragging) return; updateTL(e.clientX); });
       track.addEventListener('pointerup',     () => { tlDragging = false; });
       track.addEventListener('pointercancel', () => { tlDragging = false; });
     }
@@ -316,12 +409,11 @@ export default function LayerLibrary({ onNavigate }) {
       }
     }
 
-    // ── 时间轴入场演示动画（拖动提示）──
+    // ── 时间轴入场演示 ──
     setTimeout(() => {
       const handle = document.getElementById('lt-handle');
       const fill   = document.getElementById('lt-fill');
       if (!handle || !fill) return;
-      // 从右往左再回来，提示用户可以拖动
       handle.style.transition = 'left 0.8s ease-in-out';
       fill.style.transition   = 'width 0.8s ease-in-out';
       handle.style.left = '30%';
@@ -337,17 +429,14 @@ export default function LayerLibrary({ onNavigate }) {
       }, 900);
     }, 800);
 
-    // ── getNodeAlpha：基于节点自己的 archiveTimestamp ──
     function getNodeAlpha(n) {
       let a = 1;
       if (activeFilter && n.type !== activeFilter) a *= 0.1;
       if (searchStr && !n.label.toLowerCase().includes(searchStr) && !(n.desc || '').toLowerCase().includes(searchStr)) a *= 0.12;
-      // ✦ 核心改动：用节点的 archiveTimestamp 对比时间轴值
       if ((n.archiveTimestamp || 0) > tlValue + 0.01) a *= 0.04;
       return a;
     }
 
-    // ── draw loop ──
     function draw() {
       requestAnimationFrame(draw);
       const { w, h } = dimRef.current;
@@ -363,7 +452,7 @@ export default function LayerLibrary({ onNavigate }) {
       gNodesRef.current = gNodes.current;
 
       // edges
-      EDGES.forEach(([ai, bi]) => {
+      edgesRef.current.forEach(([ai, bi]) => {
         const na = gNodes.current[ai], nb = gNodes.current[bi];
         if (!na || !nb) return;
         const alpha = getNodeAlpha(na) * getNodeAlpha(nb);
@@ -379,52 +468,65 @@ export default function LayerLibrary({ onNavigate }) {
         const col   = TAG_HEX[n.type] || '#fff';
         const [r, g, b] = hexRGB(col);
 
-        // ✦ 检测节点从"隐藏"变为"可见"时触发点亮动画
+        // lightUp（新节点入场）
         const prevAlpha = prevAlphaRef.current[n.id] || 0;
         if (prevAlpha < 0.3 && alpha > 0.5) {
           lightUpRef.current[n.id] = { start: Date.now(), duration: 600 };
         }
         prevAlphaRef.current[n.id] = alpha;
 
-        // ✦ 点亮进度（0→1→0，爆发感）
         let lightUp = 0;
         const lu = lightUpRef.current[n.id];
         if (lu) {
           const prog = Math.min(1, (Date.now() - lu.start) / lu.duration);
-          // 先快速升到1，再慢慢降回0，用 sin 曲线
           lightUp = Math.sin(prog * Math.PI);
           if (prog >= 1) delete lightUpRef.current[n.id];
         }
 
+        // ── v0.5 · pulse（merge / tag 脉动） ──
+        let pulse = 0;
+        const pu = pulseRef.current[n.id];
+        if (pu) {
+          const prog = Math.min(1, (Date.now() - pu.start) / pu.duration);
+          // 缓慢膨胀再回弹，用 sin 前半段
+          pulse = Math.sin(prog * Math.PI) * 0.7;
+          if (prog >= 1) delete pulseRef.current[n.id];
+        }
+
         ctx.globalAlpha = Math.max(alpha, lightUp * 0.6 + alpha);
 
-        // 节点外光晕（点亮时放大）
-        const glowR = n.size * (2.8 + lightUp * 3);
+        const boost  = lightUp + pulse;
+        const glowR  = n.size * (2.8 + boost * 3);
         const og = ctx.createRadialGradient(n.px, n.py, 0, n.px, n.py, glowR);
-        og.addColorStop(0, `rgba(${r},${g},${b},${(0.12 + lightUp * 0.35)})`);
+        og.addColorStop(0, `rgba(${r},${g},${b},${0.12 + boost * 0.35})`);
         og.addColorStop(1, 'transparent');
         ctx.fillStyle = og;
         ctx.beginPath(); ctx.arc(n.px, n.py, glowR, 0, Math.PI * 2); ctx.fill();
 
-        // 节点核心（点亮时 scale up）
-        const nodeR = n.size * (1 + lightUp * 0.45);
+        const nodeR = n.size * (1 + boost * 0.45);
         ctx.beginPath(); ctx.arc(n.px, n.py, nodeR, 0, Math.PI * 2);
         const ng = ctx.createRadialGradient(n.px - nodeR * .3, n.py - nodeR * .3, 0, n.px, n.py, nodeR);
-        ng.addColorStop(0, `rgba(${r},${g},${b},${0.92 + lightUp * 0.08})`);
+        ng.addColorStop(0, `rgba(${r},${g},${b},${0.92 + boost * 0.08})`);
         ng.addColorStop(1, `rgba(${r},${g},${b},0.5)`);
         ctx.fillStyle = ng; ctx.fill();
-        ctx.strokeStyle = `rgba(${r},${g},${b},${0.55 + lightUp * 0.4})`;
-        ctx.lineWidth = 1.5 + lightUp * 2; ctx.stroke();
+        ctx.strokeStyle = `rgba(${r},${g},${b},${0.55 + boost * 0.4})`;
+        ctx.lineWidth = 1.5 + boost * 2; ctx.stroke();
 
-        // 点亮涟漪环
-        if (lightUp > 0.1) {
-          const ringR = nodeR + lightUp * n.size * 1.8;
+        if (boost > 0.1) {
+          const ringR = nodeR + boost * n.size * 1.8;
           ctx.beginPath(); ctx.arc(n.px, n.py, ringR, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(${r},${g},${b},${lightUp * 0.5})`;
+          ctx.strokeStyle = `rgba(${r},${g},${b},${boost * 0.5})`;
           ctx.lineWidth = 1; ctx.stroke();
         }
 
-        // 标签文字
+        // ── v0.5 · 新节点特殊标注（小星号） ──
+        if (n._isNew) {
+          ctx.fillStyle = `rgba(${r},${g},${b},${0.9 * alpha})`;
+          ctx.font = `bold ${n.size * 0.6}px 'Syne'`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('✦', n.px + n.size * 0.9, n.py - n.size * 0.9);
+        }
+
         ctx.fillStyle = `rgba(255,255,255,${0.82 * alpha})`;
         ctx.font = `${n.id === 0 ? 700 : 500} ${n.size * 0.72}px 'Syne'`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -448,7 +550,6 @@ export default function LayerLibrary({ onNavigate }) {
           <div className="library-header">
             <div>
               <div className="lib-title">
-                {/* ✦ 统一名称：档案馆 */}
                 档案馆<span>— 4000m · 午夜层 · 长期记忆归档</span>
               </div>
             </div>
@@ -469,7 +570,6 @@ export default function LayerLibrary({ onNavigate }) {
           <div className="nt-hint">点击查看完整档案 · 含关联记忆</div>
         </div>
 
-        {/* ✦ 时间轴完整重写：handle 用 left 定位，更直观 */}
         <div className="lib-timeline">
           <div className="lt-label-row">
             <span className="lt-label">归档时间轴 · 拖动回溯</span>
@@ -487,13 +587,32 @@ export default function LayerLibrary({ onNavigate }) {
           </div>
           <div className="lt-hint">← 向左拖动，看过去的自己</div>
         </div>
+
+        {/* ── v0.5 · 「我」节点标签云入口（有标签时显示） ── */}
+        {myTags.length > 0 && (
+          <button
+            className="my-tag-cloud-btn"
+            onClick={() => setShowMyTagCloud(true)}
+            title="查看「我」的印记标签"
+          >
+            ◈ 我的印记 <span className="mtc-count">{myTags.length}</span>
+          </button>
+        )}
       </div>
 
       {activeNode && (
         <ArchiveCard
           node={activeNode}
-          onClose={() => setActiveNode(null)}
+          onClose={() => { setActiveNode(null); setActiveNodeSource(null); }}
           onNavigate={onNavigate}
+          sourceLabel={activeNodeSource}
+        />
+      )}
+
+      {showMyTagCloud && (
+        <MyTagCloud
+          tags={myTags}
+          onClose={() => setShowMyTagCloud(false)}
         />
       )}
     </>

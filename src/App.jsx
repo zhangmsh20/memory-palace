@@ -19,6 +19,10 @@ export default function App() {
   const [currentLayer, setCurrentLayer] = useState(0);
   const [isDemoMode, setIsDemoMode] = useState(false);
 
+  // ── v0.5 · 跨层状态提升：书架提炼结果 → 档案馆视觉反馈 ──
+  const [pendingImprint, setPendingImprint] = useState(null);
+  // 结构：{ imprint: string, destOpt: { type, nodeType?, target? } } | null
+
   const currentLayerRef = useRef(0);
   useEffect(() => { currentLayerRef.current = currentLayer; }, [currentLayer]);
 
@@ -32,6 +36,14 @@ export default function App() {
       setCurrentLayer(arrived);
     });
   }, [transition]);
+
+  // ── v0.5 · 提炼确认回调：LayerShelf → App → LayerLibrary ──
+  const handleRefinementConfirm = useCallback((imprint, destOpt) => {
+    if (!imprint || !destOpt) return;
+    setPendingImprint({ imprint, destOpt });
+    // 自动下潜到档案馆层，让用户看到反馈动画
+    navigateTo(3);
+  }, [navigateTo]);
 
   // ── Wheel ──
   useEffect(() => {
@@ -120,9 +132,15 @@ export default function App() {
       <Ocean>
         <LayerIntro   onNavigate={navigateTo} />
         <LayerSticky  isDemoMode={isDemoMode} />
-        <LayerShelf   isDemoMode={isDemoMode} />
-        {/* ✦ onNavigate 传给 LayerLibrary，支持跨层跳转 */}
-        <LayerLibrary onNavigate={navigateTo} />
+        <LayerShelf
+          isDemoMode={isDemoMode}
+          onRefinementConfirm={handleRefinementConfirm}
+        />
+        <LayerLibrary
+          onNavigate={navigateTo}
+          pendingImprint={pendingImprint}
+          onImprintApplied={() => setPendingImprint(null)}
+        />
       </Ocean>
 
       <SummonOverlay />
